@@ -1,6 +1,4 @@
 $(document).ready(function () {
-  // Show loading state
-  $("body").removeClass("js-loading").addClass("js-loaded");
   init();
 });
 
@@ -8,20 +6,10 @@ async function init() {
   try {
     await loadAndDisplayProducts();
     setupEventListeners();
+    updateCategoryStats();
   } catch (error) {
     console.error("Initialization error:", error);
-    $("#resultsCount").html(`
-            <div class="error-message">
-                <i class="fas fa-exclamation-triangle"></i>
-                <h3>Error loading products</h3>
-                <p>Please check:</p>
-                <ul>
-                    <li>Ensure DB/products.json exists</li>
-                    <li>Check browser console for details</li>
-                    <li>Try refreshing the page</li>
-                </ul>
-            </div>
-        `);
+    showError("Error loading products. Please check console.");
   }
 }
 
@@ -29,117 +17,140 @@ async function loadAndDisplayProducts() {
   console.log("Loading products from DB/products.json...");
 
   try {
-    // Load the JSON file with error handling
-    const response = await fetch("DB/products.json", {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
-    });
-
-    console.log("Response status:", response.status);
+    const response = await fetch("DB/products.json");
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const contentType = response.headers.get("content-type");
-    console.log("Content-Type:", contentType);
-
-    if (!contentType || !contentType.includes("application/json")) {
-      throw new Error("Response is not JSON");
-    }
-
     const data = await response.json();
     console.log("Data received:", data);
 
-    // Check if products array exists
-    if (!data.products || !Array.isArray(data.products)) {
-      throw new Error("Invalid JSON structure: missing products array");
-    }
+    // Convert your structure to a flat products array
+    const products = convertToFlatArray(data);
+    console.log(`Converted to ${products.length} products`);
 
-    const products = data.products;
-    console.log(`Loaded ${products.length} products`);
-
-    // Store products globally for filtering
+    // Store products globally
     window.allProducts = products;
+    window.originalData = data; // Keep original structure for stats
 
-    // Display all products initially
     displayProducts(products);
-
-    // Update results count
     $("#resultsCount").text(`Found ${products.length} products`);
 
     return products;
   } catch (error) {
     console.error("Error loading products:", error);
 
-    // Provide fallback data
+    // Fallback to sample data
     const fallbackProducts = getFallbackProducts();
     window.allProducts = fallbackProducts;
     displayProducts(fallbackProducts);
     $("#resultsCount").text(
-      `Found ${fallbackProducts.length} products (using fallback data)`
-    );
-
-    // Show error message
-    showErrorNotification(
-      "Using fallback data - JSON file may be missing or invalid"
+      `Found ${fallbackProducts.length} products (using fallback)`
     );
 
     return fallbackProducts;
   }
 }
 
-function displayProducts(products) {
-  console.log("Displaying products:", products);
+function convertToFlatArray(data) {
+  const products = [];
 
+  // Loop through each category (Fruits, Vegetables, etc.)
+  for (const category in data) {
+    if (Array.isArray(data[category])) {
+      data[category].forEach((item) => {
+        // Add category to each item
+        products.push({
+          ...item,
+          category: category.toLowerCase(),
+          // Ensure id is string for consistency
+          id: item.id.toString(),
+        });
+      });
+    }
+  }
+
+  return products;
+}
+
+function displayProducts(products) {
   const container = $("#productsContainer");
   container.empty();
 
-  // Safety check
-  if (!products || !Array.isArray(products)) {
-    container.html('<div class="error">Error: Invalid products data</div>');
-    return;
-  }
-
-  if (products.length === 0) {
+  if (!products || products.length === 0) {
     container.html(`
             <div class="no-results">
                 <i class="fas fa-search"></i>
                 <h3>No products found</h3>
-                <p>Try adjusting your search term</p>
+                <p>Try adjusting your search or filters</p>
             </div>
         `);
     return;
   }
 
   products.forEach((product) => {
-    // Validate product object
-    if (!product || !product.id || !product.name) {
-      console.warn("Invalid product:", product);
-      return;
-    }
-
     const card = $(`
-            <div class="product-card" data-id="${product.id}">
-                <div class="product-color" style="background: ${
-                  product.color || "#2e7d32"
-                }"></div>
-                <h3>${product.name}</h3>
-                <p><strong>Type:</strong> ${product.type || "N/A"}</p>
-                <p><strong>Origin:</strong> ${product.origin || "N/A"}</p>
-                <p><strong>Category:</strong> ${product.category || "N/A"}</p>
-                <div class="product-id">${product.id}</div>
+            <div class="product-card" data-id="${product.id}" data-category="${
+      product.category
+    }">
+                <div class="product-header">
+                    <div class="product-color" style="background: ${getColorValue(
+                      product.color
+                    )}"></div>
+                    <span class="product-category-badge">${
+                      product.category
+                    }</span>
+                </div>
+                <h3 class="product-name">${product.name}</h3>
+                <div class="product-details">
+                    <p><i class="fas fa-tag"></i> ID: <strong>${
+                      product.id
+                    }</strong></p>
+                    <p><i class="fas fa-palette"></i> Color: ${
+                      product.color
+                    }</p>
+                    ${
+                      product.price
+                        ? `<p><i class="fas fa-euro-sign"></i> Price: €${product.price}</p>`
+                        : ""
+                    }
+                    ${
+                      product.image
+                        ? `<p><i class="fas fa-image"></i> Has image</p>`
+                        : ""
+                    }
+                </div>
+                <button class="select-product-btn">
+                    <i class="fas fa-mouse-pointer"></i> Select Product
+                </button>
             </div>
         `);
 
-    card.click(function () {
+    card.find(".select-product-btn").click((e) => {
+      e.stopPropagation();
       selectProduct(product);
     });
 
     container.append(card);
   });
+}
+
+function getColorValue(colorName) {
+  // Convert color names to hex values
+  const colorMap = {
+    red: "#f44336",
+    yellow: "#ffeb3b",
+    orange: "#ff9800",
+    green: "#4caf50",
+    blue: "#2196f3",
+    purple: "#9c27b0",
+    brown: "#795548",
+    white: "#ffffff",
+    black: "#000000",
+  };
+
+  return colorMap[colorName.toLowerCase()] || "#cccccc";
 }
 
 function selectProduct(product) {
@@ -149,18 +160,101 @@ function selectProduct(product) {
   // Add selection to clicked card
   $(`.product-card[data-id="${product.id}"]`).addClass("selected");
 
-  // Show notification
-  showNotification(`Selected: ${product.name} (ID: ${product.id})`);
+  // Show selected product details
+  showSelectedProduct(product);
 
-  // Copy to clipboard
+  // Copy ID to clipboard
   copyToClipboard(product.id);
+
+  // Show notification
+  showNotification(
+    `Selected: ${product.name} (ID: ${product.id}) - Copied to clipboard!`
+  );
+}
+
+function showSelectedProduct(product) {
+  const details = $(`
+        <div class="selected-product-details">
+            <div class="selected-header">
+                <div class="selected-color" style="background: ${getColorValue(
+                  product.color
+                )}"></div>
+                <div>
+                    <h3>${product.name}</h3>
+                    <span class="category-badge">${product.category}</span>
+                </div>
+            </div>
+            <div class="selected-info">
+                <div class="info-item">
+                    <i class="fas fa-barcode"></i>
+                    <div>
+                        <label>Product ID</label>
+                        <div class="product-id-display">${product.id}</div>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-palette"></i>
+                    <div>
+                        <label>Color</label>
+                        <div>${product.color}</div>
+                    </div>
+                </div>
+                ${
+                  product.price
+                    ? `
+                <div class="info-item">
+                    <i class="fas fa-euro-sign"></i>
+                    <div>
+                        <label>Price</label>
+                        <div>€${product.price}</div>
+                    </div>
+                </div>
+                `
+                    : ""
+                }
+                <div class="info-item">
+                    <i class="fas fa-layer-group"></i>
+                    <div>
+                        <label>Category</label>
+                        <div>${product.category}</div>
+                    </div>
+                </div>
+            </div>
+            <button class="copy-id-btn" onclick="copyToClipboard('${
+              product.id
+            }')">
+                <i class="fas fa-copy"></i> Copy ID Again
+            </button>
+        </div>
+    `);
+
+  $(".selected-details").html(details);
+}
+
+function updateCategoryStats() {
+  if (!window.originalData) return;
+
+  let totalCount = 0;
+  const stats = {};
+
+  for (const category in window.originalData) {
+    if (Array.isArray(window.originalData[category])) {
+      const count = window.originalData[category].length;
+      stats[category] = count;
+      totalCount += count;
+    }
+  }
+
+  // Update stats display
+  $("#total-count").text(totalCount);
+
+  for (const category in stats) {
+    $(`#${category.toLowerCase()}-count`).text(stats[category]);
+  }
 }
 
 function filterProducts(searchTerm) {
-  if (!window.allProducts || !Array.isArray(window.allProducts)) {
-    console.error("No products available for filtering");
-    return;
-  }
+  if (!window.allProducts) return;
 
   searchTerm = searchTerm.toLowerCase().trim();
 
@@ -171,15 +265,11 @@ function filterProducts(searchTerm) {
   }
 
   const filtered = window.allProducts.filter((product) => {
-    if (!product) return false;
-
     return (
       (product.name && product.name.toLowerCase().includes(searchTerm)) ||
-      (product.type && product.type.toLowerCase().includes(searchTerm)) ||
       (product.id && product.id.toLowerCase().includes(searchTerm)) ||
-      (product.category &&
-        product.category.toLowerCase().includes(searchTerm)) ||
-      (product.origin && product.origin.toLowerCase().includes(searchTerm))
+      (product.color && product.color.toLowerCase().includes(searchTerm)) ||
+      (product.category && product.category.toLowerCase().includes(searchTerm))
     );
   });
 
@@ -193,66 +283,54 @@ function setupEventListeners() {
     filterProducts($(this).val());
   });
 
-  // Clear search button
-  $("#clearSearch").click(function () {
+  // Category filter buttons
+  $(".category-btn").click(function () {
+    const category = $(this).data("category");
+    filterByCategory(category);
+  });
+
+  // Clear filters
+  $("#clearFilters").click(() => {
     $("#searchInput").val("");
-    filterProducts("");
+    $(".category-btn").removeClass("active");
+    $('.category-btn[data-category="all"]').addClass("active");
+    displayProducts(window.allProducts);
+    $("#resultsCount").text(`Found ${window.allProducts.length} products`);
   });
 }
 
-function getFallbackProducts() {
-  return [
-    {
-      id: "FP001",
-      name: "Carrot",
-      category: "vegetables",
-      type: "Bio Organic",
-      color: "#ff9800",
-      origin: "Local Farm",
-    },
-    {
-      id: "FP002",
-      name: "Carrot",
-      category: "vegetables",
-      type: "European",
-      color: "#ff5722",
-      origin: "France",
-    },
-    {
-      id: "FP003",
-      name: "Tomato",
-      category: "vegetables",
-      type: "Cherry",
-      color: "#f44336",
-      origin: "Spain",
-    },
-  ];
+function filterByCategory(category) {
+  if (!window.allProducts) return;
+
+  $(".category-btn").removeClass("active");
+  $(`.category-btn[data-category="${category}"]`).addClass("active");
+
+  if (category === "all") {
+    displayProducts(window.allProducts);
+    $("#resultsCount").text(`Found ${window.allProducts.length} products`);
+    return;
+  }
+
+  const filtered = window.allProducts.filter(
+    (product) => product.category === category
+  );
+
+  displayProducts(filtered);
+  $("#resultsCount").text(`Found ${filtered.length} products`);
 }
 
+// Helper functions
 function copyToClipboard(text) {
   if (!text) return;
 
   if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => console.log("Copied:", text))
-      .catch((err) => console.error("Copy failed:", err));
+    navigator.clipboard.writeText(text);
   } else {
-    // Fallback method
     const textArea = document.createElement("textarea");
     textArea.value = text;
-    textArea.style.position = "fixed";
-    textArea.style.opacity = "0";
     document.body.appendChild(textArea);
     textArea.select();
-
-    try {
-      document.execCommand("copy");
-      console.log("Copied (fallback):", text);
-    } catch (err) {
-      console.error("Fallback copy failed:", err);
-    }
-
+    document.execCommand("copy");
     document.body.removeChild(textArea);
   }
 }
@@ -270,27 +348,42 @@ function showNotification(message) {
 
   $("body").append(notification);
 
-  // Auto-remove after 3 seconds
   setTimeout(() => {
-    notification.fadeOut(300, function () {
-      $(this).remove();
-    });
+    notification.fadeOut(300, () => notification.remove());
   }, 3000);
 }
 
-function showErrorNotification(message) {
-  const notification = $(`
-        <div class="custom-notification error">
-            <i class="fas fa-exclamation-circle"></i>
-            <span>${message}</span>
+function showError(message) {
+  $("#resultsCount").html(`
+        <div class="error">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h4>${message}</h4>
         </div>
     `);
+}
 
-  $("body").append(notification);
-
-  setTimeout(() => {
-    notification.fadeOut(300, function () {
-      $(this).remove();
-    });
-  }, 5000);
+function getFallbackProducts() {
+  return [
+    {
+      id: "1",
+      name: "Apple",
+      category: "fruits",
+      color: "Red",
+      price: 1.2,
+    },
+    {
+      id: "2",
+      name: "Banana",
+      category: "fruits",
+      color: "Yellow",
+      price: 0.5,
+    },
+    {
+      id: "3",
+      name: "Carrot",
+      category: "vegetables",
+      color: "Orange",
+      price: 0.8,
+    },
+  ];
 }
