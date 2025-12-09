@@ -14,7 +14,7 @@
         <!-- Shop Header -->
         <div class="shop-header">
             <div class="shop-title">
-                <div class="shop-logo"><img src="../Images/Bio-Planet-logo.jpg" width="100px" height="100px"></div>
+                <div class="shop-logo"><img src="../Images/Bio-Planet.png" width="110px" height="100px"></div>
                 <div>
                     <h1 class="shop-name">Bio-Planet</h1>
                     <div class="shop-subtitle">Product ID Finder</div>
