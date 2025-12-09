@@ -1,0 +1,62 @@
+[
+  {
+    "id": "1001",
+    "name": "Organic Apples abolfazle ahmadi 1tpifi LPEM",
+    "image": "apple.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "1002",
+    "name": "Bananas",
+    "image": "bananas.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "1003",
+    "name": "Carrots",
+    "image": "carrots.jpg",
+    "category": "vegetables"
+  },
+  {
+    "id": "1004",
+    "name": "Tomatoes",
+    "image": "tomatoes.jpg",
+    "category": "vegetables"
+  },
+  {
+    "id": "1005",
+    "name": "Almonds",
+    "image": "almonds.jpg",
+    "category": "nuts"
+  },
+  {
+    "id": "1006",
+    "name": "Walnuts",
+    "image": "walnuts.jpg",
+    "category": "nuts"
+  },
+  {
+    "id": "1007",
+    "name": "Sourdough Bread",
+    "image": "bread.jpg",
+    "category": "bread"
+  },
+  {
+    "id": "1008",
+    "name": "Organic Chocolate",
+    "image": "chocolate.jpg",
+    "category": "sweets"
+  },
+  {
+    "id": "2001",
+    "name": "Shopping Bag",
+    "image": "bag.jpg",
+    "category": "etc"
+  },
+  {
+    "id": "2002",
+    "name": "Gift Card",
+    "image": "giftcard.jpg",
+    "category": "etc"
+  }
+]
