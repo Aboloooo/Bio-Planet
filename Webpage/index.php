@@ -67,6 +67,10 @@
                     <i class="fas fa-cookie-bite"></i>
                     <span>Sweets: <span id="sweets-count">0</span></span>
                 </div>
+                <div class="stat total">
+                    <i class="fas fa-boxes"></i>
+                    <span>Total: <span id="total-count">0</span></span>
+                </div>
             </div>
 
             <!-- Main Content -->
