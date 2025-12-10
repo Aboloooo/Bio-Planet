@@ -58,5 +58,89 @@
     "name": "Gift Card",
     "image": "giftcard.jpg",
     "category": "etc"
+  },
+  {
+    "id": "2003",
+    "name": "Clementines Bio",
+    "image": "Clementines Bio.PNG",
+    "category": "fruits"
+  },
+  {
+    "id": "2004",
+    "name": "Povirons Rouges Bio",
+    "image": "Povirons Rouges Bio.PNG",
+    "category": "vegetables"
   }
+  ,
+  {
+    "id": "2005",
+    "name": "Avocat Bio",
+    "image": "avocat Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2006",
+    "name": "Bio Oignons",
+    "image": "Bio Oignons.jpg",
+    "category": "vegetables"
+  },
+  {
+    "id": "2007",
+    "name": "Poireaux Bio",
+    "image": "Poireaux Bio.jpg",
+    "category": "vegetables"
+  }
+  ,
+  {
+    "id": "2008",
+    "name": "EU bananes Cavendish Bio",
+    "image": "EU bananes Cavendish Bio.jpg",
+    "category": "fruits"
+  }
+  ,
+  {
+    "id": "2009",
+    "name": "poire Conférence Bio",
+    "image": "poire Conférence Bio.jpg",
+    "category": "fruits"
+  }
+  ,
+  {
+    "id": "2010",
+    "name": "Ail Bio",
+    "image": "Ail Bio.jpg",
+    "category": "vegetables"
+  }
+  ,
+  {
+    "id": "2010",
+    "name": "citrons Bio ",
+    "image": "citrons Bio.jpg",
+    "category": "fruits"
+  }
+  ,
+  {
+    "id": "2011",
+    "name": "Patates Douces Bio",
+    "image": "Patates Douces Bio.jpg",
+    "category": "vegetables"
+  }
+    ,
+  {
+    "id": "2012",
+    "name": "concombre Bio",
+    "image": "concombre Bio.jpg",
+    "category": "vegetables"
+  }
+  ,
+  {
+    "id": "2013",
+    "name": "pomme Jonagold Bio",
+    "image": "pomme Jonagold Bio.jpg",
+    "category": "fruits"
+  }
+  
+  
+  
+  
 ]
