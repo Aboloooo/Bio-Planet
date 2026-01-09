@@ -147,7 +147,7 @@
     "id": "2027",
     "name": "Limons Fruits Frais Bio Limette",
     "image": "Limons Fruits Frais Bio Limette.jpg",
-    "category": "vegetables"
+    "category": "fruits"
   },
   {
     "id": "2011",
@@ -397,9 +397,8 @@
     "image": "Curcuma Bio.jpg",
     "category": "vegetables"
   },
-
   {
-    "id": "2051",
+    "id": "2050",
     "name": "Pleurotes Bio P",
     "image": "Pleurotes Bio P.jpg",
     "category": "vegetables"
@@ -457,5 +456,167 @@
     "name": "Topinambours Bio",
     "image": "Topinambours Bio.jpg",
     "category": "vegetables"
+  },
+  {
+    "id": "2061",
+    "name": "Portobello Bio",
+    "image": "Portobello Bio.jpg",
+    "category": "vegetables"
+  },
+  {
+    "id": "2062",
+    "name": "Radis noir Bio",
+    "image": "Radis noir Bio.jpg",
+    "category": "vegetables"
+  },
+  {
+    "id": "2063",
+    "name": "Haricots A Couper Bio",
+    "image": "Haricots A Couper Bio.jpg",
+    "category": "vegetables"
+  },
+  {
+    "id": "2066",
+    "name": "Potimarron Vert Bio",
+    "image": "Potimarron Vert Bio.jpg",
+    "category": "vegetables"
+  },
+  {
+    "id": "2067",
+    "name": "Aloë Vera Bio",
+    "image": "Aloë Vera Bio.jpg",
+    "category": "vegetables"
+  },
+  {
+    "id": "2068",
+    "name": "Potiron Spaghetti Bio",
+    "image": "Potiron Spaghetti Bio.jpg",
+    "category": "vegetables"
+  },
+  {
+    "id": "2069",
+    "name": "Navets bio rutabaga",
+    "image": "Navets bio rutabaga.jpg",
+    "category": "vegetables"
+  },
+  {
+    "id": "2070",
+    "name": "Oranges Bio",
+    "image": "Oranges Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2071",
+    "name": "Kaki Persimmon Bio",
+    "image": "Kaki Persimmon Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2072",
+    "name": "Poire Qtee Bio",
+    "image": "Poire Qtee Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2076",
+    "name": "Mangue Bio",
+    "image": "Mangue Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2077",
+    "name": "Pomme Pink Lady Bio",
+    "image": "Pomme Pink Lady Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2078",
+    "name": "Pommes Boskoop Bio",
+    "image": "Pommes Boskoop Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2079",
+    "name": "Doyenne Bio",
+    "image": "Doyenne Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2080",
+    "name": "Pamplemousse Rouge Bio",
+    "image": "Pamplemousse Rouge Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2081",
+    "name": "Fruits de passion",
+    "image": "Fruits de passion.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2082",
+    "name": "Raisin blanc seedless Bio",
+    "image": "Raisin Blanc seedless Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2083",
+    "name": "Pomme Nicogreen Bio",
+    "image": "Pomme Nicogreen Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2084",
+    "name": "Grenade Bio",
+    "image": "Grenade Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2085",
+    "name": "Ananas Bio",
+    "image": "Ananas Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2086",
+    "name": "Framboises ravier Bio",
+    "image": "Framboises ravier Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2087",
+    "name": "Kumquat Bio",
+    "image": "Kumquat Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2088",
+    "name": "Poire Nashi Bio",
+    "image": "Poire Nashi Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2088",
+    "name": "Mandarines Bio",
+    "image": "Mandarines Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2089",
+    "name": "Papaye Papaja Bio",
+    "image": "Papaye Papaja Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2090",
+    "name": "Raisin coloré seedless Bio",
+    "image": "Raisin coloré seedless Bio.jpg",
+    "category": "fruits"
+  },
+  {
+    "id": "2091",
+    "name": "Pommes Topaz Bio",
+    "image": "Papaye Papaja Bio.jpg",
+    "category": "fruits"
   }
 ]
