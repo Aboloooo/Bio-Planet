@@ -22,7 +22,7 @@
             </div>
             <div class="last-update">
                 <span id="currentDate"></span><br>
-                <span id="productCountHeader">Loading products...</span>
+                <span id="productCountHeader">Demo version</span>
             </div>
         </div>
         <!-- Language Selector -->
