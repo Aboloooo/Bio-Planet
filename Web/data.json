@@ -459,19 +459,13 @@
     "category": "vegetables"
   },
   {
-    "id": "2054",
-    "name": "Broccolini Bio",
-    "image": "Broccolini Bio.jpg",
-    "category": "vegetables"
-  },
-  {
-    "id": "2018",
+    "id": "437",
     "name": "ZESPRI kiwi Sungold bio",
     "image": "ZESPRI kiwi Sungold bio.jpg",
     "category": "fruits"
   },
   {
-    "id": "2025",
+    "id": "178",
     "name": "ZESPRI kiwi green bio",
     "image": "ZESPRI kiwi green bio.jpg",
     "category": "fruits"
@@ -724,6 +718,12 @@
     "category": "vegetables"
   },
   {
+    "id": "80019",
+    "name": "Chou blanc bio",
+    "image": "Chou blanc bio.jpg",
+    "category": "vegetables"
+  },
+  {
     "id": "80422",
     "name": "Chou Vert Bio",
     "image": "Chou Vert Bio.jpg",
@@ -835,12 +835,6 @@
     "id": "90063",
     "name": "Pamplemousse Rouge Bio",
     "image": "Pamplemousse Rouge Bio.jpg",
-    "category": "fruits"
-  },
-  {
-    "id": "2081",
-    "name": "Fruits de passion",
-    "image": "Fruits de passion.jpg",
     "category": "fruits"
   },
   {
