@@ -287,12 +287,18 @@ $(document).ready(function () {
       input.click();
 
       if (document.activeElement !== input) {
-        showKeyboardStatus(translations[currentLang].keyboardFocusFailed, "error");
+        showKeyboardStatus(
+          translations[currentLang].keyboardFocusFailed,
+          "error",
+        );
         return;
       }
 
       if (!isTouchDevice) {
-        showKeyboardStatus(translations[currentLang].keyboardNoTouch, "warning");
+        showKeyboardStatus(
+          translations[currentLang].keyboardNoTouch,
+          "warning",
+        );
         return;
       }
 
@@ -302,14 +308,18 @@ $(document).ready(function () {
       ) {
         try {
           navigator.virtualKeyboard.show();
-          showKeyboardStatus(translations[currentLang].keyboardRequested, "info");
+          showKeyboardStatus(
+            translations[currentLang].keyboardRequested,
+            "info",
+          );
 
           setTimeout(() => {
             if (!window.visualViewport) {
               return;
             }
 
-            const heightChange = initialViewportHeight - window.visualViewport.height;
+            const heightChange =
+              initialViewportHeight - window.visualViewport.height;
             if (heightChange < 80 && document.activeElement === input) {
               showKeyboardStatus(
                 translations[currentLang].keyboardLikelySetting,
@@ -318,7 +328,10 @@ $(document).ready(function () {
             }
           }, 700);
         } catch (error) {
-          showKeyboardStatus(translations[currentLang].keyboardBlocked, "error");
+          showKeyboardStatus(
+            translations[currentLang].keyboardBlocked,
+            "error",
+          );
         }
       } else {
         showKeyboardStatus(translations[currentLang].keyboardNoApi, "warning");
@@ -513,7 +526,9 @@ $(document).ready(function () {
               part
                 .split("'")
                 .map((piece) =>
-                  piece ? piece.charAt(0).toUpperCase() + piece.slice(1) : piece,
+                  piece
+                    ? piece.charAt(0).toUpperCase() + piece.slice(1)
+                    : piece,
                 )
                 .join("'"),
             )
