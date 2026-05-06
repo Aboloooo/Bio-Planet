@@ -2,6 +2,7 @@ $(document).ready(function () {
   let products = [];
   let currentLang = "fr";
   let currentCategory = "all";
+  let keyboardStatusTimeoutId = null;
 
   // Translations
   const translations = {
@@ -33,6 +34,19 @@ $(document).ready(function () {
       missingSuccess: "Thanks. Your note has been saved.",
       missingError: "Could not save your note. Please try again.",
       missingRequired: "Please enter a product name.",
+      openKeyboard: "Open keyboard",
+      keyboardNoTouch:
+        "No touch input detected. On-screen keyboard usually stays hidden when a physical keyboard is available.",
+      keyboardNoApi:
+        "This browser does not support direct virtual keyboard control. Tap the search field to trigger the system keyboard.",
+      keyboardBlocked:
+        "The browser blocked opening the virtual keyboard API on this device.",
+      keyboardRequested:
+        "Keyboard request sent. If no keyboard appears, check your device touch keyboard settings.",
+      keyboardLikelySetting:
+        "Input is focused, but keyboard did not open. The system touch keyboard setting is likely disabled.",
+      keyboardFocusFailed:
+        "Could not focus the search field. Please tap directly inside the field.",
     },
     fr: {
       searchPlaceholder: "Rechercher par nom ou ID produit...",
@@ -63,6 +77,19 @@ $(document).ready(function () {
       missingSuccess: "Merci. Votre note a ete enregistree.",
       missingError: "Impossible d'enregistrer la note. Reessayez.",
       missingRequired: "Veuillez saisir un nom de produit.",
+      openKeyboard: "Ouvrir le clavier",
+      keyboardNoTouch:
+        "Aucun mode tactile detecte. Le clavier virtuel reste souvent masque si un clavier physique est disponible.",
+      keyboardNoApi:
+        "Ce navigateur ne prend pas en charge le controle direct du clavier virtuel. Touchez le champ de recherche pour ouvrir le clavier systeme.",
+      keyboardBlocked:
+        "Le navigateur a bloque l'ouverture du clavier virtuel sur cet appareil.",
+      keyboardRequested:
+        "Demande d'ouverture envoyee. Si le clavier n'apparait pas, verifiez les parametres du clavier tactile.",
+      keyboardLikelySetting:
+        "Le champ est actif, mais le clavier ne s'ouvre pas. Le parametre clavier tactile du systeme est probablement desactive.",
+      keyboardFocusFailed:
+        "Impossible d'activer le champ de recherche. Touchez directement le champ.",
     },
     nl: {
       searchPlaceholder: "Zoek op productnaam of ID...",
@@ -92,8 +119,38 @@ $(document).ready(function () {
       missingSuccess: "Bedankt. Je notitie is opgeslagen.",
       missingError: "Notitie opslaan mislukt. Probeer opnieuw.",
       missingRequired: "Vul een productnaam in.",
+      openKeyboard: "Toetsenbord openen",
+      keyboardNoTouch:
+        "Geen aanraakinvoer gedetecteerd. Het schermtoetsenbord blijft meestal verborgen wanneer een fysiek toetsenbord beschikbaar is.",
+      keyboardNoApi:
+        "Deze browser ondersteunt geen directe bediening van het virtuele toetsenbord. Tik op het zoekveld om het systeemtoetsenbord te openen.",
+      keyboardBlocked:
+        "De browser heeft het openen van het virtuele toetsenbord op dit apparaat geblokkeerd.",
+      keyboardRequested:
+        "Toetsenbordaanvraag verzonden. Als er niets verschijnt, controleer de instellingen van het schermtoetsenbord.",
+      keyboardLikelySetting:
+        "Het invoerveld heeft focus, maar het toetsenbord opent niet. De systeeminstelling voor het schermtoetsenbord is waarschijnlijk uitgeschakeld.",
+      keyboardFocusFailed:
+        "Het zoekveld kon geen focus krijgen. Tik direct in het veld.",
     },
   };
+
+  function showKeyboardStatus(message, type = "info") {
+    const status = $("#keyboardStatus");
+
+    if (keyboardStatusTimeoutId) {
+      clearTimeout(keyboardStatusTimeoutId);
+      keyboardStatusTimeoutId = null;
+    }
+
+    status.removeClass("info success warning error");
+    status.addClass(type).text(message);
+
+    keyboardStatusTimeoutId = setTimeout(() => {
+      status.removeClass("info success warning error").text("");
+      keyboardStatusTimeoutId = null;
+    }, 7000);
+  }
 
   // Initialize
   loadProducts();
@@ -157,10 +214,10 @@ $(document).ready(function () {
 
     filtered.forEach((product) => {
       const card = `
-                <div class="product-card" data-id="${product.id}" role="button" tabindex="0" aria-label="${translations[currentLang].productCardLabel} ${product.name}">
-                    <img src="products/${product.image}" alt="${product.name}" class="product-image" loading="lazy" decoding="async" width="320" height="180">
+          <div class="product-card" data-id="${product.id}" role="button" tabindex="0" aria-label="${translations[currentLang].productCardLabel} ${product.displayName}">
+            <img src="products/${product.image}" alt="${product.displayName}" class="product-image" loading="lazy" decoding="async" width="320" height="180">
                     <div class="product-info">
-                        <div class="product-name">${product.name}</div>
+              <div class="product-name">${product.displayName}</div>
                         <div class="card-id">ID: ${product.id}</div>
                     </div>
                 </div>
@@ -175,8 +232,8 @@ $(document).ready(function () {
 
     $("#modalImage")
       .attr("src", `products/${product.image}`)
-      .attr("alt", product.name);
-    $("#modalName").text(product.name);
+      .attr("alt", product.displayName);
+    $("#modalName").text(product.displayName);
     $("#modalId").text(product.id);
     $("#modalCategory").text(
       translations[currentLang][product.category] || product.category,
@@ -211,6 +268,61 @@ $(document).ready(function () {
     $("#clearSearch").on("click", function () {
       $("#searchInput").val("").focus();
       displayProducts();
+    });
+
+    // Open virtual keyboard on touch devices when available.
+    $("#openKeyboardBtn").on("click", function () {
+      const input = document.getElementById("searchInput");
+      if (!input) return;
+
+      const isTouchDevice =
+        (navigator.maxTouchPoints || 0) > 0 ||
+        window.matchMedia("(pointer: coarse)").matches;
+
+      const initialViewportHeight = window.visualViewport
+        ? window.visualViewport.height
+        : window.innerHeight;
+
+      input.focus({ preventScroll: true });
+      input.click();
+
+      if (document.activeElement !== input) {
+        showKeyboardStatus(translations[currentLang].keyboardFocusFailed, "error");
+        return;
+      }
+
+      if (!isTouchDevice) {
+        showKeyboardStatus(translations[currentLang].keyboardNoTouch, "warning");
+        return;
+      }
+
+      if (
+        navigator.virtualKeyboard &&
+        typeof navigator.virtualKeyboard.show === "function"
+      ) {
+        try {
+          navigator.virtualKeyboard.show();
+          showKeyboardStatus(translations[currentLang].keyboardRequested, "info");
+
+          setTimeout(() => {
+            if (!window.visualViewport) {
+              return;
+            }
+
+            const heightChange = initialViewportHeight - window.visualViewport.height;
+            if (heightChange < 80 && document.activeElement === input) {
+              showKeyboardStatus(
+                translations[currentLang].keyboardLikelySetting,
+                "warning",
+              );
+            }
+          }, 700);
+        } catch (error) {
+          showKeyboardStatus(translations[currentLang].keyboardBlocked, "error");
+        }
+      } else {
+        showKeyboardStatus(translations[currentLang].keyboardNoApi, "warning");
+      }
     });
 
     // Category filter
@@ -363,6 +475,9 @@ $(document).ready(function () {
       translations[currentLang].missingDetailsLabel,
     );
     $("#submitMissingNote").text(translations[currentLang].missingSubmit);
+    $("#openKeyboardBtn")
+      .attr("aria-label", translations[currentLang].openKeyboard)
+      .attr("title", translations[currentLang].openKeyboard);
 
     // Update category buttons
     $('[data-category="all"]').text(translations[currentLang].all);
@@ -378,8 +493,38 @@ $(document).ready(function () {
   }
 
   function normalizeProductData() {
+    const smartTitleCase = (value) => {
+      const cleaned = String(value || "")
+        .trim()
+        .replace(/\s+/g, " ");
+
+      return cleaned
+        .split(" ")
+        .map((token) => {
+          // Keep short uppercase product codes like BPX, EU, BIO.
+          if (/^[A-Z0-9]{2,4}$/.test(token)) {
+            return token;
+          }
+
+          return token
+            .toLowerCase()
+            .split("-")
+            .map((part) =>
+              part
+                .split("'")
+                .map((piece) =>
+                  piece ? piece.charAt(0).toUpperCase() + piece.slice(1) : piece,
+                )
+                .join("'"),
+            )
+            .join("-");
+        })
+        .join(" ");
+    };
+
     products = products.map((product) => ({
       ...product,
+      displayName: smartTitleCase(product.name),
       searchName: String(product.name || "").toLowerCase(),
       searchId: String(product.id || "").toLowerCase(),
     }));
