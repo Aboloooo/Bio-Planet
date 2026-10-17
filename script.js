@@ -545,3 +545,1314 @@ $(document).ready(function () {
     }));
   }
 });
+
+// Expiry tracking is isolated from the product finder and uses localStorage only.
+(() => {
+  const STORAGE_KEY = "bioPlanetExpiryEntries";
+  const ALERT_LEAD_DAYS = 10;
+  const form = document.getElementById("expiryForm");
+  if (!form) return;
+
+  const entriesBody = document.getElementById("expiryEntries");
+  const emptyState = document.getElementById("expiryEmptyState");
+  const entryCount = document.getElementById("expiryEntryCount");
+  const collectedFilterToggle = document.getElementById(
+    "collectedFilterToggle",
+  );
+  const collectionToggle = document.getElementById("collectionToggle");
+  const collectionPanel = document.getElementById("collectionPanel");
+  const collectionEntries = document.getElementById("collectionEntries");
+  const collectionEmptyState = document.getElementById("collectionEmptyState");
+  const collectionHeading = document.getElementById("collectionHeading");
+  const storageError = document.getElementById("expiryStorageError");
+  const removeConfirmOverlay = document.getElementById("removeConfirmOverlay");
+  const removeConfirmMessage = document.getElementById("removeConfirmMessage");
+  let pendingRemoveId = null;
+  const recentlyCollected = new Set();
+  let showCollected = false;
+
+  const labels = {
+    en: {
+      locale: "en-GB",
+      finderTab: "Product Finder",
+      finderSubtitle: "Product ID Finder",
+      chooseApp: "Choose app",
+      trackerTab: "Expiry Tracker",
+      trackerSubtitle: "Expiry Date Tracker",
+      trackerTitle: "Expiry Date Tracker",
+      eyebrow: "Stock rotation",
+      rowNumber: "Row Number",
+      chooseRow: "Choose row",
+      productName: "Product Name",
+      productNamePlaceholder: "e.g. Organic Milk",
+      productId: "Product ID",
+      productIdPlaceholder: "e.g. 123456",
+      expiryDate: "Expiry Date",
+      expiryDatePlaceholder: "Choose a date",
+      addProduct: "Add Product",
+      trackedProducts: "Tracked products",
+      trackedProductsHelp: "Alerts start 10 days before expiry",
+      showCollected: "Show Collected",
+      hideCollected: "Hide Collected",
+      tableHeaders: [
+        "Row",
+        "Product Name",
+        "Product ID",
+        "Expiry Date",
+        "Alert Date",
+        "Status",
+      ],
+      typing: "Typing:",
+      keyboardGenericTitle: "On-screen keyboard",
+      keyboardTitle: (name) => `Enter ${name}`,
+      openTextKeyboard: "Open custom keyboard for product name",
+      openNumberKeyboard: "Open numeric keypad for product ID",
+      keyboardCancel: "Close without saving",
+      keyboardDone: "✓ Done",
+      keyboardDoneLabel: "Done",
+      keyboardLanguageLabel: "Change keyboard language",
+      keyboardShiftLabel: "Toggle uppercase",
+      keyboardBackspaceLabel: "Backspace",
+      deleteKey: "DEL",
+      space: "Space",
+      rowPickerTitle: "Choose shelf row",
+      rowPickerDone: "Done",
+      rowPickerLabel: "Shelf row number",
+      rowPickerSelected: "Selected row",
+      calendarPrevious: "Previous month",
+      calendarNext: "Next month",
+      calendarCancel: "Cancel",
+      weekdays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      toggle: (count) => `📋 View Today's Collection List (${count})`,
+      heading: "Today's Collection List",
+      closePanel: "Close",
+      empty: "No products to collect.",
+      collected: "✅ COLLECTED",
+      collect: "🔴 COLLECT NOW",
+      soon: "🟡 EXPIRING SOON",
+      expired: "⚫ EXPIRED",
+      ok: "🟢 OK",
+      markCollected: "✅ Mark as Collected",
+      markedCollected: "✅ Collected",
+      remove: "🗑 Remove",
+      removeLabel: (name) => `Remove ${name} from expiry tracker`,
+      removeTitle: "Remove tracked product?",
+      removePrompt: (name) =>
+        `Remove ${name} from active tracking? A history record will be kept.`,
+      cancel: "Cancel",
+      confirmRemove: "🗑 Remove",
+      fields: [
+        "Row",
+        "Product Name",
+        "Product ID",
+        "Expiry Date",
+        "Days Remaining",
+      ],
+      days: (count) => `${count} day${count === 1 ? "" : "s"} remaining`,
+      overdue: (count) => `${count} day${count === 1 ? "" : "s"} overdue`,
+      items: (count) => `${count} ${count === 1 ? "item" : "items"}`,
+      noEntries: "No expiry dates recorded.",
+      noVisibleEntries: "No collected entries are currently shown.",
+      storageError: "Expiry entries could not be saved in this browser.",
+    },
+    fr: {
+      locale: "fr-BE",
+      finderTab: "Recherche de produits",
+      finderSubtitle: "Recherche d'ID produit",
+      chooseApp: "Choisir une application",
+      trackerTab: "Suivi des dates",
+      trackerSubtitle: "Suivi des dates d'expiration",
+      trackerTitle: "Suivi des dates d'expiration",
+      eyebrow: "Rotation du stock",
+      rowNumber: "Numéro de rangée",
+      chooseRow: "Choisir une rangée",
+      productName: "Nom du produit",
+      productNamePlaceholder: "ex. Lait bio",
+      productId: "ID produit",
+      productIdPlaceholder: "ex. 123456",
+      expiryDate: "Date d'expiration",
+      expiryDatePlaceholder: "Choisir une date",
+      addProduct: "Ajouter le produit",
+      trackedProducts: "Produits suivis",
+      trackedProductsHelp: "Alertes 10 jours avant expiration",
+      showCollected: "Afficher collectés",
+      hideCollected: "Masquer collectés",
+      tableHeaders: [
+        "Rangée",
+        "Nom du produit",
+        "ID produit",
+        "Expiration",
+        "Date d'alerte",
+        "Statut",
+      ],
+      typing: "Saisie:",
+      keyboardGenericTitle: "Clavier virtuel",
+      keyboardTitle: (name) => `Saisir ${name}`,
+      openTextKeyboard: "Ouvrir le clavier virtuel pour le nom du produit",
+      openNumberKeyboard: "Ouvrir le pavé numérique pour l'ID produit",
+      keyboardCancel: "Fermer sans enregistrer",
+      keyboardDone: "✓ Terminé",
+      keyboardDoneLabel: "Terminé",
+      keyboardLanguageLabel: "Changer la langue du clavier",
+      keyboardShiftLabel: "Basculer en majuscules",
+      keyboardBackspaceLabel: "Retour arrière",
+      deleteKey: "SUPPR",
+      space: "Espace",
+      rowPickerTitle: "Choisir une rangée",
+      rowPickerDone: "Terminé",
+      rowPickerLabel: "Numéro de rangée",
+      rowPickerSelected: "Rangée sélectionnée",
+      calendarPrevious: "Mois précédent",
+      calendarNext: "Mois suivant",
+      calendarCancel: "Annuler",
+      weekdays: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"],
+      toggle: (count) => `📋 Liste de collecte du jour (${count})`,
+      heading: "Liste de collecte du jour",
+      closePanel: "Fermer",
+      empty: "Aucun produit à collecter.",
+      collected: "✅ COLLECTÉ",
+      collect: "🔴 COLLECTER MAINTENANT",
+      soon: "🟡 EXPIRE BIENTÔT",
+      expired: "⚫ EXPIRÉ",
+      ok: "🟢 OK",
+      markCollected: "✅ Marquer comme collecté",
+      markedCollected: "✅ Collecté",
+      remove: "🗑 Retirer",
+      removeLabel: (name) => `Retirer ${name} du suivi des dates`,
+      removeTitle: "Retirer le produit suivi ?",
+      removePrompt: (name) =>
+        `Retirer ${name} du suivi actif ? Une trace sera conservée.`,
+      cancel: "Annuler",
+      confirmRemove: "🗑 Retirer",
+      fields: [
+        "Rangée",
+        "Nom du produit",
+        "ID produit",
+        "Date d'expiration",
+        "Jours restants",
+      ],
+      days: (count) =>
+        `${count} jour${count === 1 ? "" : "s"} restant${count === 1 ? "" : "s"}`,
+      overdue: (count) => `En retard de ${count} jour${count === 1 ? "" : "s"}`,
+      items: (count) => `${count} article${count === 1 ? "" : "s"}`,
+      noEntries: "Aucune date d'expiration enregistrée.",
+      noVisibleEntries: "Aucun produit collecté n'est affiché.",
+      storageError: "Impossible d'enregistrer les dates dans ce navigateur.",
+    },
+    nl: {
+      locale: "nl-BE",
+      finderTab: "Productzoeker",
+      finderSubtitle: "Product-ID zoeken",
+      chooseApp: "App kiezen",
+      trackerTab: "Vervaldatumtracker",
+      trackerSubtitle: "Vervaldatums bijhouden",
+      trackerTitle: "Vervaldatums bijhouden",
+      eyebrow: "Voorraadrotatie",
+      rowNumber: "Rijnummer",
+      chooseRow: "Kies een rij",
+      productName: "Productnaam",
+      productNamePlaceholder: "bijv. Biologische melk",
+      productId: "Product-ID",
+      productIdPlaceholder: "bijv. 123456",
+      expiryDate: "Vervaldatum",
+      expiryDatePlaceholder: "Kies een datum",
+      addProduct: "Product toevoegen",
+      trackedProducts: "Gevolgde producten",
+      trackedProductsHelp: "Meldingen 10 dagen voor vervaldatum",
+      showCollected: "Toon verzamelde",
+      hideCollected: "Verberg verzamelde",
+      tableHeaders: [
+        "Rij",
+        "Productnaam",
+        "Product-ID",
+        "Vervaldatum",
+        "Meldingsdatum",
+        "Status",
+      ],
+      typing: "Typen:",
+      keyboardGenericTitle: "Schermtoetsenbord",
+      keyboardTitle: (name) => `${name} invoeren`,
+      openTextKeyboard: "Aangepast toetsenbord voor productnaam openen",
+      openNumberKeyboard: "Numeriek toetsenblok voor product-ID openen",
+      keyboardCancel: "Sluiten zonder opslaan",
+      keyboardDone: "✓ Gereed",
+      keyboardDoneLabel: "Gereed",
+      keyboardLanguageLabel: "Toetsenbordtaal wijzigen",
+      keyboardShiftLabel: "Hoofdletters wisselen",
+      keyboardBackspaceLabel: "Backspace",
+      deleteKey: "WIS",
+      space: "Spatie",
+      rowPickerTitle: "Kies een voorraadrij",
+      rowPickerDone: "Gereed",
+      rowPickerLabel: "Voorraadrij",
+      rowPickerSelected: "Geselecteerde rij",
+      calendarPrevious: "Vorige maand",
+      calendarNext: "Volgende maand",
+      calendarCancel: "Annuleren",
+      weekdays: ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"],
+      toggle: (count) => `📋 Lijst van vandaag (${count})`,
+      heading: "Lijst van vandaag",
+      closePanel: "Sluiten",
+      empty: "Geen producten om te verzamelen.",
+      collected: "✅ VERZAMELD",
+      collect: "🔴 NU VERZAMELEN",
+      soon: "🟡 VERLOOPT BINNENKORT",
+      expired: "⚫ VERLOPEN",
+      ok: "🟢 OK",
+      markCollected: "✅ Markeren als verzameld",
+      markedCollected: "✅ Verzameld",
+      remove: "🗑 Verwijderen",
+      removeLabel: (name) => `${name} uit de vervaldatumtracker verwijderen`,
+      removeTitle: "Gevolgd product verwijderen?",
+      removePrompt: (name) =>
+        `${name} uit de actieve lijst verwijderen? De geschiedenis blijft bewaard.`,
+      cancel: "Annuleren",
+      confirmRemove: "🗑 Verwijderen",
+      fields: [
+        "Rij",
+        "Productnaam",
+        "Product-ID",
+        "Vervaldatum",
+        "Dagen resterend",
+      ],
+      days: (count) => `${count} dag${count === 1 ? "" : "en"} resterend`,
+      overdue: (count) => `${count} dag${count === 1 ? "" : "en"} verlopen`,
+      items: (count) => `${count} artikelen`,
+      noEntries: "Geen vervaldatums geregistreerd.",
+      noVisibleEntries:
+        "Er worden momenteel geen verzamelde producten getoond.",
+      storageError:
+        "Vervaldatums konden niet in deze browser worden opgeslagen.",
+    },
+  };
+
+  function currentLanguage() {
+    return document.querySelector(".lang-btn.active")?.dataset.lang || "en";
+  }
+
+  function translate(key, ...args) {
+    const value = labels[currentLanguage()]?.[key] ?? labels.en[key] ?? key;
+    return typeof value === "function" ? value(...args) : value;
+  }
+
+  function currentLocale() {
+    return translate("locale");
+  }
+
+  window.translateTracker = translate;
+
+  function translateTrackerUi() {
+    const setText = (selector, key) => {
+      const element = document.querySelector(selector);
+      if (element) element.textContent = translate(key);
+    };
+    const setAttribute = (selector, attribute, key) => {
+      const element = document.querySelector(selector);
+      if (element) element.setAttribute(attribute, translate(key));
+    };
+
+    setText(
+      "#shopSubtitle",
+      document.getElementById("expiryPanel").hidden
+        ? "finderSubtitle"
+        : "trackerSubtitle",
+    );
+    document.documentElement.lang = currentLocale();
+    setAttribute(".app-switcher", "aria-label", "chooseApp");
+    setText("#finderTabLabel", "finderTab");
+    setText("#expiryTabLabel", "trackerTab");
+    setText("#expiryEyebrow", "eyebrow");
+    setText("#expiryTitle", "trackerTitle");
+    setText("#expiryRowLabel", "rowNumber");
+    setText("#rowPickerHint", "chooseRow");
+    setText("#expiryProductNameLabel", "productName");
+    setText("#expiryProductIdLabel", "productId");
+    setText("#expiryDateLabel", "expiryDate");
+    setText("#expirySaveButton", "addProduct");
+    setText("#trackedProductsHeading", "trackedProducts");
+    setText("#trackedProductsHelp", "trackedProductsHelp");
+    setText(
+      "#collectedFilterToggle",
+      showCollected ? "hideCollected" : "showCollected",
+    );
+    document
+      .getElementById("collectedFilterToggle")
+      .setAttribute("aria-pressed", String(showCollected));
+    [
+      "#expiryHeaderRow",
+      "#expiryHeaderName",
+      "#expiryHeaderId",
+      "#expiryHeaderDate",
+      "#expiryHeaderAlert",
+      "#expiryHeaderStatus",
+    ].forEach((selector, index) => {
+      const element = document.querySelector(selector);
+      if (element) element.textContent = translate("tableHeaders")[index];
+    });
+    setText(
+      "#expiryEmptyState",
+      entries.some((entry) => entry.removed === false)
+        ? "noVisibleEntries"
+        : "noEntries",
+    );
+    document.getElementById("expiryProductName").placeholder = translate(
+      "productNamePlaceholder",
+    );
+    document.getElementById("expiryProductId").placeholder = translate(
+      "productIdPlaceholder",
+    );
+    document.getElementById("expiryDate").placeholder = translate(
+      "expiryDatePlaceholder",
+    );
+    setAttribute("#expiryDate", "aria-label", "expiryDate");
+    setAttribute("#rowPickerTrigger", "title", "chooseRow");
+    setAttribute(
+      '[data-keyboard-target="expiryProductName"]',
+      "aria-label",
+      "openTextKeyboard",
+    );
+    setAttribute(
+      '[data-keyboard-target="expiryProductName"]',
+      "title",
+      "openTextKeyboard",
+    );
+    setAttribute(
+      '[data-keyboard-target="expiryProductId"]',
+      "aria-label",
+      "openNumberKeyboard",
+    );
+    setAttribute(
+      '[data-keyboard-target="expiryProductId"]',
+      "title",
+      "openNumberKeyboard",
+    );
+    setText("#keyboardTypingLabel", "typing");
+    const keyboardTitleElement = document.getElementById("keyboardTitle");
+    const keyboardFieldKey =
+      keyboardTitleElement.dataset.fieldId === "expiryProductName"
+        ? "productName"
+        : "productId";
+    keyboardTitleElement.textContent =
+      !document.getElementById("touchKeyboard").hidden &&
+      keyboardTitleElement.dataset.fieldId
+        ? translate("keyboardTitle", translate(keyboardFieldKey))
+        : translate("keyboardGenericTitle");
+    setAttribute("#touchKeyboardCancel", "aria-label", "keyboardCancel");
+    setText("#touchKeyboardDone", "keyboardDone");
+    setAttribute("#touchKeyboardDone", "aria-label", "keyboardDoneLabel");
+    setAttribute("#keyboardLanguage", "aria-label", "keyboardLanguageLabel");
+    setText("#rowPickerTitle", "rowPickerTitle");
+    setAttribute("#rowPickerClose", "aria-label", "rowPickerDone");
+    setAttribute("#rowWheel", "aria-label", "rowPickerLabel");
+    setAttribute("#rowPickerTrigger", "aria-label", "chooseRow");
+    setText("#rowPickerSelectedLabel", "rowPickerSelected");
+    setAttribute('[data-calendar-move="-1"]', "aria-label", "calendarPrevious");
+    setAttribute('[data-calendar-move="1"]', "aria-label", "calendarNext");
+    setText("#calendarCancelButton", "calendarCancel");
+    translate("weekdays").forEach((weekday, index) => {
+      const dayIndex = String((index + 1) % 7);
+      const weekdayElement = document.querySelector(
+        `[data-weekday="${dayIndex}"]`,
+      );
+      if (weekdayElement) weekdayElement.textContent = weekday;
+    });
+    setText("#collectionEmptyState", "empty");
+    document.getElementById("expiryEntryCount").textContent = translate(
+      "items",
+      entries.filter((entry) => entry.removed === false).length,
+    );
+    setText("#removeConfirmTitle", "removeTitle");
+    setText("#cancelRemove", "cancel");
+    setText("#confirmRemove", "confirmRemove");
+    const pendingEntry = entries.find((entry) => entry.id === pendingRemoveId);
+    if (pendingEntry)
+      removeConfirmMessage.textContent = translate(
+        "removePrompt",
+        pendingEntry.productName,
+      );
+    if (!storageError.hidden)
+      storageError.textContent = translate("storageError");
+  }
+
+  function todayKey() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function shiftDate(dateString, days) {
+    const [year, month, day] = dateString.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day + days));
+    return date.toISOString().slice(0, 10);
+  }
+
+  function daysBetween(fromDate, toDate) {
+    const [fromYear, fromMonth, fromDay] = fromDate.split("-").map(Number);
+    const [toYear, toMonth, toDay] = toDate.split("-").map(Number);
+    const from = Date.UTC(fromYear, fromMonth - 1, fromDay);
+    const to = Date.UTC(toYear, toMonth - 1, toDay);
+    return Math.round((to - from) / 86400000);
+  }
+
+  function loadEntries() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      if (!Array.isArray(saved)) return [];
+      const validEntries = saved.filter(
+        (entry) =>
+          entry &&
+          typeof entry.id === "string" &&
+          typeof entry.rowNumber === "string" &&
+          typeof entry.productName === "string" &&
+          typeof entry.productId === "string" &&
+          /^\d{4}-\d{2}-\d{2}$/.test(entry.expiryDate) &&
+          /^\d{4}-\d{2}-\d{2}$/.test(entry.alertDate),
+      );
+      const normalized = validEntries.map((entry) => ({
+        ...entry,
+        collected: entry.collected === true,
+        removed: entry.removed === true,
+      }));
+      if (
+        validEntries.some(
+          (entry) =>
+            typeof entry.collected !== "boolean" ||
+            typeof entry.removed !== "boolean",
+        )
+      ) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+        } catch (error) {
+          // Keep valid in-memory entries even if localStorage is temporarily unavailable.
+        }
+      }
+      return normalized;
+    } catch (error) {
+      return [];
+    }
+  }
+
+  let entries = loadEntries();
+
+  function saveEntries() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      storageError.hidden = true;
+      return true;
+    } catch (error) {
+      showStorageError();
+      return false;
+    }
+  }
+
+  function appendTextElement(parent, tagName, className, text) {
+    const element = document.createElement(tagName);
+    if (className) element.className = className;
+    element.textContent = text;
+    parent.append(element);
+    return element;
+  }
+
+  function showStorageError() {
+    storageError.hidden = false;
+    storageError.textContent = translate("storageError");
+  }
+
+  function dueEntriesFor(today) {
+    return entries
+      .filter(
+        (entry) =>
+          entry.collected === false &&
+          entry.removed === false &&
+          today >= entry.alertDate,
+      )
+      .sort((first, second) =>
+        first.expiryDate.localeCompare(second.expiryDate),
+      );
+  }
+
+  function renderCollectionList(today) {
+    const activeDue = dueEntriesFor(today);
+    const visibleDue = [...activeDue];
+    recentlyCollected.forEach((id) => {
+      const entry = entries.find((candidate) => candidate.id === id);
+      if (
+        entry &&
+        entry.collected === true &&
+        entry.removed === false &&
+        today >= entry.alertDate
+      ) {
+        visibleDue.push(entry);
+      }
+    });
+
+    collectionToggle.textContent = translate("toggle", activeDue.length);
+    collectionToggle.disabled = activeDue.length === 0;
+    collectionHeading.textContent = translate("heading");
+    document.getElementById("closeCollectionPanel").textContent =
+      translate("closePanel");
+    document
+      .getElementById("closeCollectionPanel")
+      .setAttribute("aria-label", translate("closePanel"));
+    collectionEmptyState.textContent = translate("empty");
+    collectionEmptyState.hidden = visibleDue.length > 0;
+    if (activeDue.length === 0 && recentlyCollected.size === 0) {
+      collectionPanel.hidden = true;
+      collectionToggle.setAttribute("aria-expanded", "false");
+    }
+
+    collectionEntries.replaceChildren();
+    const headers = translate("fields");
+    visibleDue.forEach((entry) => {
+      const isDone = entry.collected === true;
+      const days = daysBetween(today, entry.expiryDate);
+      const item = document.createElement("article");
+      item.className = `collection-item${isDone ? " collected-done" : ""}`;
+      item.dataset.entryId = entry.id;
+
+      const details = document.createElement("div");
+      details.className = "collection-item-details";
+      const values = [
+        entry.rowNumber,
+        entry.productName,
+        entry.productId,
+        entry.expiryDate,
+        days < 0
+          ? translate("overdue", Math.abs(days))
+          : translate("days", days),
+      ];
+      values.forEach((value, index) => {
+        const field = document.createElement("div");
+        field.className = "collection-item-field";
+        appendTextElement(
+          field,
+          "span",
+          "collection-field-label",
+          headers[index],
+        );
+        appendTextElement(field, "strong", "", value);
+        details.append(field);
+      });
+      item.append(details);
+
+      if (isDone) {
+        appendTextElement(
+          item,
+          "span",
+          "collection-done-badge",
+          translate("markedCollected"),
+        );
+      } else {
+        const collectButton = appendTextElement(
+          item,
+          "button",
+          "mark-collected-btn",
+          translate("markCollected"),
+        );
+        collectButton.type = "button";
+        collectButton.dataset.collectId = entry.id;
+      }
+      collectionEntries.append(item);
+    });
+  }
+
+  function renderEntries() {
+    const today = todayKey();
+    const visibleEntries = entries.filter((entry) => entry.removed === false);
+    const displayedEntries = visibleEntries.filter(
+      (entry) => showCollected || entry.collected === false,
+    );
+    translateTrackerUi();
+    entriesBody.replaceChildren();
+    entryCount.textContent = translate("items", visibleEntries.length);
+    emptyState.textContent =
+      visibleEntries.length > 0
+        ? translate("noVisibleEntries")
+        : translate("noEntries");
+    emptyState.hidden = displayedEntries.length > 0;
+    collectedFilterToggle.hidden = !visibleEntries.some(
+      (entry) => entry.collected === true,
+    );
+
+    let previousMonth = "";
+    displayedEntries
+      .slice()
+      .sort((first, second) =>
+        first.expiryDate.localeCompare(second.expiryDate),
+      )
+      .forEach((entry) => {
+        const monthKey = entry.expiryDate.slice(0, 7);
+        if (monthKey !== previousMonth) {
+          const [year, month] = monthKey.split("-").map(Number);
+          const monthHeading = new Intl.DateTimeFormat(currentLocale(), {
+            month: "long",
+            year: "numeric",
+          }).format(new Date(year, month - 1, 1));
+          const groupRow = document.createElement("tr");
+          groupRow.className = "expiry-month-group";
+          const groupCell = document.createElement("th");
+          groupCell.colSpan = 6;
+          groupCell.scope = "rowgroup";
+          groupCell.textContent = monthHeading;
+          groupRow.append(groupCell);
+          entriesBody.append(groupRow);
+          previousMonth = monthKey;
+        }
+        const daysToAlert = daysBetween(today, entry.alertDate);
+        const isExpired = today > entry.expiryDate;
+        const row = document.createElement("tr");
+        [
+          entry.rowNumber,
+          entry.productName,
+          entry.productId,
+          entry.expiryDate,
+          entry.alertDate,
+        ].forEach((value) => {
+          appendTextElement(row, "td", "", value);
+        });
+
+        const statusCell = document.createElement("td");
+        const statusClass = entry.collected
+          ? "collected"
+          : isExpired
+            ? "expired"
+            : today >= entry.alertDate
+              ? "collect"
+              : daysToAlert < ALERT_LEAD_DAYS
+                ? "soon"
+                : "ok";
+        const statusText = entry.collected
+          ? translate("collected")
+          : statusClass === "expired"
+            ? translate("expired")
+            : statusClass === "collect"
+              ? translate("collect")
+              : statusClass === "soon"
+                ? translate("soon")
+                : translate("ok");
+        appendTextElement(
+          statusCell,
+          "span",
+          `expiry-status ${statusClass}`,
+          statusText,
+        );
+
+        const removeButton = appendTextElement(
+          statusCell,
+          "button",
+          "expiry-remove-btn",
+          translate("remove"),
+        );
+        removeButton.type = "button";
+        removeButton.dataset.removeId = entry.id;
+        removeButton.setAttribute(
+          "aria-label",
+          translate("removeLabel", entry.productName),
+        );
+        row.append(statusCell);
+        entriesBody.append(row);
+      });
+
+    renderCollectionList(today);
+  }
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    const rowNumber = String(formData.get("rowNumber")).trim();
+    const productName = String(formData.get("productName")).trim();
+    const productId = String(formData.get("productId")).trim();
+    const expiryDate = String(formData.get("expiryDate"));
+    if (
+      !/^\d+$/.test(rowNumber) ||
+      Number(rowNumber) < 1 ||
+      !productName ||
+      !productId ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(expiryDate)
+    )
+      return;
+
+    const id =
+      window.crypto && typeof window.crypto.randomUUID === "function"
+        ? window.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    entries.push({
+      id,
+      rowNumber,
+      productName,
+      productId,
+      expiryDate,
+      alertDate: shiftDate(expiryDate, -ALERT_LEAD_DAYS),
+      collected: false,
+      removed: false,
+    });
+
+    if (saveEntries()) {
+      form.reset();
+      renderEntries();
+      document.getElementById("expiryRow").focus();
+    } else {
+      entries = entries.filter((entry) => entry.id !== id);
+    }
+  });
+
+  entriesBody.addEventListener("click", (event) => {
+    const removeButton = event.target.closest("button[data-remove-id]");
+    if (!removeButton) return;
+    const entry = entries.find(
+      (candidate) => candidate.id === removeButton.dataset.removeId,
+    );
+    if (!entry) return;
+    pendingRemoveId = entry.id;
+    document.getElementById("removeConfirmTitle").textContent =
+      translate("removeTitle");
+    removeConfirmMessage.textContent = translate(
+      "removePrompt",
+      entry.productName,
+    );
+    document.getElementById("cancelRemove").textContent = translate("cancel");
+    document.getElementById("confirmRemove").textContent =
+      translate("confirmRemove");
+    removeConfirmOverlay.hidden = false;
+    document.getElementById("confirmRemove").focus();
+  });
+
+  function closeRemoveConfirm() {
+    removeConfirmOverlay.hidden = true;
+    pendingRemoveId = null;
+  }
+
+  document
+    .getElementById("cancelRemove")
+    .addEventListener("click", closeRemoveConfirm);
+  removeConfirmOverlay.addEventListener("click", (event) => {
+    if (event.target === removeConfirmOverlay) closeRemoveConfirm();
+  });
+  document.getElementById("confirmRemove").addEventListener("click", () => {
+    const entry = entries.find((candidate) => candidate.id === pendingRemoveId);
+    if (!entry) {
+      closeRemoveConfirm();
+      return;
+    }
+    entry.removed = true;
+    if (saveEntries()) {
+      closeRemoveConfirm();
+      renderEntries();
+    } else {
+      entry.removed = false;
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !removeConfirmOverlay.hidden)
+      closeRemoveConfirm();
+  });
+
+  collectionEntries.addEventListener("click", (event) => {
+    const collectButton = event.target.closest("button[data-collect-id]");
+    if (!collectButton) return;
+    const entry = entries.find(
+      (candidate) => candidate.id === collectButton.dataset.collectId,
+    );
+    if (!entry || entry.collected || entry.removed) return;
+
+    entry.collected = true;
+    if (!saveEntries()) {
+      entry.collected = false;
+      return;
+    }
+
+    recentlyCollected.add(entry.id);
+    renderEntries();
+    window.setTimeout(() => {
+      recentlyCollected.delete(entry.id);
+      renderEntries();
+    }, 700);
+  });
+
+  collectionToggle.addEventListener("click", () => {
+    if (collectionToggle.disabled) return;
+    collectionPanel.hidden = !collectionPanel.hidden;
+    collectionToggle.setAttribute(
+      "aria-expanded",
+      String(!collectionPanel.hidden),
+    );
+  });
+
+  document
+    .getElementById("closeCollectionPanel")
+    .addEventListener("click", () => {
+      collectionPanel.hidden = true;
+      collectionToggle.setAttribute("aria-expanded", "false");
+      collectionToggle.focus();
+    });
+
+  collectedFilterToggle.addEventListener("click", () => {
+    showCollected = !showCollected;
+    renderEntries();
+  });
+
+  document.querySelectorAll(".lang-btn").forEach((button) => {
+    button.addEventListener("click", () => window.setTimeout(renderEntries, 0));
+  });
+
+  renderEntries();
+  window.setInterval(renderEntries, 60000);
+})();
+
+(() => {
+  const finderTab = document.getElementById("finderTab");
+  const expiryTab = document.getElementById("expiryTab");
+  const finderPanel = document.getElementById("finderPanel");
+  const expiryPanel = document.getElementById("expiryPanel");
+  const shopSubtitle = document.getElementById("shopSubtitle");
+  if (!finderTab || !expiryTab || !finderPanel || !expiryPanel) return;
+  const translate = window.translateTracker;
+
+  const tabs = [finderTab, expiryTab];
+  const panels = [finderPanel, expiryPanel];
+  const keyboardOverlay = document.getElementById("touchKeyboard");
+  const keyboardKeys = document.getElementById("touchKeys");
+  const keyboardTitle = document.getElementById("keyboardTitle");
+  const keyboardPreviewValue = document.getElementById("keyboardPreviewValue");
+  const keyboardLanguageButton = document.getElementById("keyboardLanguage");
+  const keyboardDoneButton = document.getElementById("touchKeyboardDone");
+  const keyboardCancelButton = document.getElementById("touchKeyboardCancel");
+  const calendarOverlay = document.getElementById("expiryCalendar");
+  const calendarTitle = document.getElementById("calendarTitle");
+  const calendarDays = document.getElementById("calendarDays");
+  const expiryDateInput = document.getElementById("expiryDate");
+  const rowInput = document.getElementById("expiryRow");
+  const rowDisplay = document.getElementById("rowNumberDisplay");
+  const rowPickerTrigger = document.getElementById("rowPickerTrigger");
+  const rowPickerOverlay = document.getElementById("rowPickerOverlay");
+  const rowPickerClose = document.getElementById("rowPickerClose");
+  const rowWheel = document.getElementById("rowWheel");
+  const rowPickerSelection = document.getElementById("rowPickerSelection");
+  let keyboardTarget = null;
+  let keyboardTrigger = null;
+  let keyboardType = "text";
+  let keyboardLanguage = "en";
+  let keyboardOriginalValue = "";
+  let keyboardOriginalInputMode = "text";
+  let calendarMonth = new Date();
+  let isShifted = false;
+  let keyboardStart = 0;
+  let keyboardEnd = 0;
+  let rowScrollFrame = false;
+
+  function closeKeyboard(cancelChanges = false) {
+    if (keyboardTarget) {
+      if (cancelChanges) {
+        keyboardTarget.value = keyboardOriginalValue;
+        keyboardTarget.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      keyboardTarget.inputMode = keyboardOriginalInputMode;
+      keyboardTarget = null;
+    }
+    keyboardOverlay.hidden = true;
+    const trigger = keyboardTrigger;
+    keyboardTrigger = null;
+    if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+  }
+
+  function closeTouchOverlays() {
+    closeKeyboard(false);
+    calendarOverlay.hidden = true;
+    rowPickerOverlay.hidden = true;
+  }
+
+  function selectApp(index, focusTab = false) {
+    closeTouchOverlays();
+    tabs.forEach((tab, tabIndex) => {
+      const isActive = tabIndex === index;
+      tab.classList.toggle("active", isActive);
+      tab.setAttribute("aria-selected", String(isActive));
+      tab.tabIndex = isActive ? 0 : -1;
+      panels[tabIndex].hidden = !isActive;
+      panels[tabIndex].classList.toggle("active", isActive);
+    });
+    shopSubtitle.textContent = translate(
+      index === 0 ? "finderSubtitle" : "trackerSubtitle",
+    );
+    if (focusTab) tabs[index].focus();
+  }
+
+  tabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => selectApp(index));
+    tab.addEventListener("keydown", (event) => {
+      let nextIndex = null;
+      if (event.key === "ArrowRight" || event.key === "ArrowDown")
+        nextIndex = (index + 1) % tabs.length;
+      if (event.key === "ArrowLeft" || event.key === "ArrowUp")
+        nextIndex = (index + tabs.length - 1) % tabs.length;
+      if (event.key === "Home") nextIndex = 0;
+      if (event.key === "End") nextIndex = tabs.length - 1;
+      if (nextIndex !== null) {
+        event.preventDefault();
+        selectApp(nextIndex, true);
+      }
+    });
+  });
+
+  function renderKeyboard() {
+    keyboardKeys.replaceChildren();
+    const layouts = {
+      en: ["qwertyuiop", "asdfghjkl", "zxcvbnm"],
+      fr: ["azertyuiop", "qsdfghjklm", "wxcvbn"],
+      nl: ["qwertyuiop", "asdfghjkl", "zxcvbnm"],
+    };
+    const rows =
+      keyboardType === "numeric"
+        ? [
+            ["1", "2", "3"],
+            ["4", "5", "6"],
+            ["7", "8", "9"],
+            ["DEL", "0", "✓"],
+          ]
+        : [
+            [..."1234567890"],
+            [...layouts[keyboardLanguage][0]],
+            [...layouts[keyboardLanguage][1]],
+            ["shift", ...layouts[keyboardLanguage][2], "⌫"],
+            ["-", "_", "@", "é", "à", "è", "ç", "ù", "space"],
+          ];
+
+    keyboardLanguageButton.hidden = keyboardType === "numeric";
+    keyboardLanguageButton.textContent = keyboardLanguage.toUpperCase();
+
+    rows.forEach((row) => {
+      const keyRow = document.createElement("div");
+      keyRow.className = "touch-key-row";
+      if (keyboardType === "numeric") keyRow.classList.add("numeric-key-row");
+      row.forEach((key) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "touch-key";
+        button.dataset.keyValue = key;
+        if (key === "space") {
+          button.textContent = translate("space");
+          button.classList.add("space-key");
+        } else if (key === "✓") {
+          button.textContent = "✓";
+          button.setAttribute("aria-label", translate("keyboardDoneLabel"));
+          button.classList.add("utility-key", "keyboard-submit-key");
+        } else if (key === "shift") {
+          button.textContent = "⇧";
+          button.setAttribute("aria-label", translate("keyboardShiftLabel"));
+          button.classList.add("utility-key");
+        } else if (key === "⌫" || key === "DEL") {
+          button.textContent = key === "DEL" ? translate("deleteKey") : "⌫";
+          button.setAttribute(
+            "aria-label",
+            translate("keyboardBackspaceLabel"),
+          );
+          button.classList.add("utility-key");
+        } else {
+          button.textContent = isShifted ? key.toUpperCase() : key;
+        }
+        keyRow.append(button);
+      });
+      keyboardKeys.append(keyRow);
+    });
+  }
+
+  function updateKeyboardPreview() {
+    if (!keyboardTarget) return;
+    keyboardPreviewValue.textContent = `"${keyboardTarget.value}"`;
+    keyboardStart =
+      keyboardTarget.selectionStart ?? keyboardTarget.value.length;
+    keyboardEnd = keyboardTarget.selectionEnd ?? keyboardStart;
+  }
+
+  function openKeyboard(input, trigger) {
+    keyboardTarget = input;
+    keyboardTrigger = trigger;
+    keyboardType = input.dataset.keyboard;
+    keyboardStart = input.value.length;
+    keyboardEnd = keyboardStart;
+    input.setSelectionRange(keyboardStart, keyboardEnd);
+    keyboardOriginalValue = input.value;
+    keyboardOriginalInputMode = input.inputMode || "text";
+    keyboardLanguage =
+      document.querySelector(".lang-btn.active")?.dataset.lang || "en";
+    keyboardTitle.dataset.fieldId = input.id;
+    input.inputMode = "none";
+    const fieldKey =
+      input.id === "expiryProductName" ? "productName" : "productId";
+    keyboardTitle.textContent = translate("keyboardTitle", translate(fieldKey));
+    isShifted = false;
+    updateKeyboardPreview();
+    renderKeyboard();
+    calendarOverlay.hidden = true;
+    rowPickerOverlay.hidden = true;
+    keyboardOverlay.hidden = false;
+  }
+
+  function insertKeyboardValue(value) {
+    if (!keyboardTarget) return;
+    const input = keyboardTarget;
+    if (value === "✓") {
+      closeKeyboard(false);
+      return;
+    }
+    if (value === "shift") {
+      isShifted = !isShifted;
+      renderKeyboard();
+      return;
+    }
+
+    const start = keyboardStart;
+    const end = keyboardEnd;
+    const maxLength = input.maxLength > 0 ? input.maxLength : Infinity;
+    let nextValue = input.value;
+    let nextPosition = start;
+    let refreshKeyboard = false;
+
+    if (value === "⌫" || value === "DEL") {
+      const deleteStart = start === end ? Math.max(0, start - 1) : start;
+      nextValue = `${input.value.slice(0, deleteStart)}${input.value.slice(end)}`;
+      nextPosition = deleteStart;
+    } else {
+      const character =
+        value === "space" ? " " : isShifted ? value.toUpperCase() : value;
+      refreshKeyboard = isShifted;
+      const available = maxLength - (input.value.length - (end - start));
+      const insertion = character.slice(0, Math.max(0, available));
+      nextValue = `${input.value.slice(0, start)}${insertion}${input.value.slice(end)}`;
+      nextPosition = start + insertion.length;
+      if (isShifted) isShifted = false;
+    }
+
+    input.value = nextValue;
+    keyboardStart = nextPosition;
+    keyboardEnd = nextPosition;
+    input.setSelectionRange(keyboardStart, keyboardEnd);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    updateKeyboardPreview();
+    if (refreshKeyboard) renderKeyboard();
+  }
+
+  keyboardKeys.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-key-value]");
+    if (button) insertKeyboardValue(button.dataset.keyValue);
+  });
+
+  keyboardDoneButton.addEventListener("click", () => closeKeyboard(false));
+  keyboardCancelButton.addEventListener("click", () => closeKeyboard(true));
+  keyboardLanguageButton.addEventListener("click", () => {
+    const order = ["en", "fr", "nl"];
+    keyboardLanguage =
+      order[(order.indexOf(keyboardLanguage) + 1) % order.length];
+    document
+      .querySelector(`.lang-btn[data-lang="${keyboardLanguage}"]`)
+      ?.click();
+    renderKeyboard();
+  });
+
+  keyboardOverlay.addEventListener("click", (event) => {
+    if (event.target === keyboardOverlay) closeKeyboard(false);
+  });
+
+  document
+    .querySelectorAll("#expiryForm input[data-keyboard]")
+    .forEach((input) => {
+      input.addEventListener("input", updateKeyboardPreview);
+    });
+
+  document.querySelectorAll(".touch-keyboard-trigger").forEach((trigger) => {
+    trigger.addEventListener("click", () => {
+      const input = document.getElementById(trigger.dataset.keyboardTarget);
+      if (input) openKeyboard(input, trigger);
+    });
+  });
+
+  const rowFragment = document.createDocumentFragment();
+  for (let rowNumber = 1; rowNumber <= 170; rowNumber += 1) {
+    const option = document.createElement("div");
+    option.className = "row-wheel-option";
+    option.dataset.row = String(rowNumber);
+    option.setAttribute("role", "option");
+    option.setAttribute("aria-selected", "false");
+    option.textContent = String(rowNumber);
+    rowFragment.append(option);
+  }
+  rowWheel.append(rowFragment);
+
+  function updateRowSelection() {
+    const rowNumber = Math.min(
+      170,
+      Math.max(1, Math.round(rowWheel.scrollTop / 40) + 1),
+    );
+    rowInput.value = String(rowNumber);
+    rowDisplay.textContent = String(rowNumber);
+    rowPickerSelection.textContent = String(rowNumber);
+    rowWheel.querySelectorAll(".row-wheel-option").forEach((option) => {
+      const selected = Number(option.dataset.row) === rowNumber;
+      option.classList.toggle("selected", selected);
+      option.setAttribute("aria-selected", String(selected));
+    });
+  }
+
+  document.getElementById("expiryForm").addEventListener("reset", () => {
+    window.setTimeout(() => {
+      rowWheel.scrollTop = (Number(rowInput.value || 1) - 1) * 40;
+      updateRowSelection();
+    }, 0);
+  });
+
+  rowWheel.addEventListener("scroll", () => {
+    if (rowScrollFrame) return;
+    rowScrollFrame = true;
+    window.requestAnimationFrame(() => {
+      updateRowSelection();
+      rowScrollFrame = false;
+    });
+  });
+
+  rowWheel.addEventListener("click", (event) => {
+    const option = event.target.closest(".row-wheel-option");
+    if (!option) return;
+    rowWheel.scrollTo({
+      top: (Number(option.dataset.row) - 1) * 40,
+      behavior: "smooth",
+    });
+  });
+
+  function closeRowPicker() {
+    rowPickerOverlay.hidden = true;
+    rowPickerTrigger.focus({ preventScroll: true });
+  }
+
+  rowPickerTrigger.addEventListener("click", () => {
+    keyboardOverlay.hidden = true;
+    calendarOverlay.hidden = true;
+    rowPickerOverlay.hidden = false;
+    rowWheel.scrollTop = (Number(rowInput.value || 1) - 1) * 40;
+    updateRowSelection();
+    rowWheel.focus({ preventScroll: true });
+  });
+  rowPickerClose.addEventListener("click", closeRowPicker);
+  rowPickerOverlay.addEventListener("click", (event) => {
+    if (event.target === rowPickerOverlay) closeRowPicker();
+  });
+
+  function localDateKey(year, month, day) {
+    return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+
+  function renderCalendar() {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    calendarTitle.textContent = calendarMonth.toLocaleDateString(
+      translate("locale"),
+      { month: "long", year: "numeric" },
+    );
+    calendarDays.replaceChildren();
+
+    const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+    const todayKey = localDateKey(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+
+    const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+    for (let index = 0; index < totalCells; index += 1) {
+      const day = index - firstWeekday + 1;
+      if (day < 1 || day > daysInMonth) {
+        const emptyCell = document.createElement("span");
+        emptyCell.className = "calendar-empty";
+        calendarDays.append(emptyCell);
+        continue;
+      }
+
+      const dateKey = localDateKey(year, month, day);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "calendar-day";
+      button.dataset.date = dateKey;
+      button.textContent = String(day);
+      button.setAttribute(
+        "aria-label",
+        new Date(year, month, day).toLocaleDateString(translate("locale"), {
+          dateStyle: "full",
+        }),
+      );
+      if (dateKey === todayKey) button.classList.add("today");
+      if (expiryDateInput.value === dateKey) button.classList.add("selected");
+      calendarDays.append(button);
+    }
+  }
+
+  expiryDateInput.addEventListener("click", () => {
+    const selectedParts = expiryDateInput.value.match(
+      /^(\d{4})-(\d{2})-(\d{2})$/,
+    );
+    calendarMonth = selectedParts
+      ? new Date(Number(selectedParts[1]), Number(selectedParts[2]) - 1, 1)
+      : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    renderCalendar();
+    keyboardOverlay.hidden = true;
+    calendarOverlay.hidden = false;
+  });
+
+  calendarOverlay.addEventListener("click", (event) => {
+    if (
+      event.target === calendarOverlay ||
+      event.target.closest("[data-calendar-action='close']")
+    ) {
+      calendarOverlay.hidden = true;
+      expiryDateInput.focus({ preventScroll: true });
+      return;
+    }
+
+    const monthButton = event.target.closest("[data-calendar-move]");
+    if (monthButton) {
+      calendarMonth.setMonth(
+        calendarMonth.getMonth() + Number(monthButton.dataset.calendarMove),
+      );
+      renderCalendar();
+      return;
+    }
+
+    const dayButton = event.target.closest("button[data-date]");
+    if (dayButton) {
+      expiryDateInput.value = dayButton.dataset.date;
+      expiryDateInput.dispatchEvent(new Event("change", { bubbles: true }));
+      calendarOverlay.hidden = true;
+      expiryDateInput.focus({ preventScroll: true });
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeTouchOverlays();
+  });
+
+  document.querySelectorAll(".lang-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      window.setTimeout(() => {
+        if (
+          keyboardTarget &&
+          !keyboardOverlay.hidden &&
+          keyboardType === "text"
+        ) {
+          keyboardLanguage = button.dataset.lang;
+          const fieldKey =
+            keyboardTarget.id === "expiryProductName"
+              ? "productName"
+              : "productId";
+          keyboardTitle.textContent = translate(
+            "keyboardTitle",
+            translate(fieldKey),
+          );
+          renderKeyboard();
+        }
+        if (!calendarOverlay.hidden) renderCalendar();
+      }, 0);
+    });
+  });
+})();
