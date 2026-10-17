@@ -654,6 +654,8 @@ $(document).ready(function () {
       noEntries: "No expiry dates recorded.",
       noVisibleEntries: "No collected entries are currently shown.",
       storageError: "Expiry entries could not be saved in this browser.",
+      serverSyncError:
+        "Expiry entries are saved locally, but the server JSON file could not be updated.",
     },
     fr: {
       locale: "fr-BE",
@@ -738,6 +740,8 @@ $(document).ready(function () {
       noEntries: "Aucune date d'expiration enregistrée.",
       noVisibleEntries: "Aucun produit collecté n'est affiché.",
       storageError: "Impossible d'enregistrer les dates dans ce navigateur.",
+      serverSyncError:
+        "Les dates sont enregistrées localement, mais le fichier JSON du serveur n'a pas pu être mis à jour.",
     },
     nl: {
       locale: "nl-BE",
@@ -823,6 +827,8 @@ $(document).ready(function () {
         "Er worden momenteel geen verzamelde producten getoond.",
       storageError:
         "Vervaldatums konden niet in deze browser worden opgeslagen.",
+      serverSyncError:
+        "Vervaldatums zijn lokaal opgeslagen, maar het JSON-serverbestand kon niet worden bijgewerkt.",
     },
   };
 
@@ -971,7 +977,9 @@ $(document).ready(function () {
         pendingEntry.productName,
       );
     if (!storageError.hidden)
-      storageError.textContent = translate("storageError");
+      storageError.textContent = translate(
+        storageError.dataset.messageKey || "storageError",
+      );
   }
 
   function todayKey() {
@@ -996,11 +1004,10 @@ $(document).ready(function () {
     return Math.round((to - from) / 86400000);
   }
 
-  function loadEntries() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      if (!Array.isArray(saved)) return [];
-      const validEntries = saved.filter(
+  function normalizeEntries(saved) {
+    if (!Array.isArray(saved)) return [];
+    return saved
+      .filter(
         (entry) =>
           entry &&
           typeof entry.id === "string" &&
@@ -1009,23 +1016,30 @@ $(document).ready(function () {
           typeof entry.productId === "string" &&
           /^\d{4}-\d{2}-\d{2}$/.test(entry.expiryDate) &&
           /^\d{4}-\d{2}-\d{2}$/.test(entry.alertDate),
-      );
-      const normalized = validEntries.map((entry) => ({
+      )
+      .map((entry) => ({
         ...entry,
         collected: entry.collected === true,
         removed: entry.removed === true,
+        updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : "",
       }));
+  }
+
+  function loadEntries() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      const normalized = normalizeEntries(saved);
       if (
-        validEntries.some(
-          (entry) =>
-            typeof entry.collected !== "boolean" ||
-            typeof entry.removed !== "boolean",
+        normalized.some(
+          (entry, index) =>
+            typeof saved[index]?.collected !== "boolean" ||
+            typeof saved[index]?.removed !== "boolean",
         )
       ) {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
         } catch (error) {
-          // Keep valid in-memory entries even if localStorage is temporarily unavailable.
+          // Keep valid in-memory entries if the browser cache is unavailable.
         }
       }
       return normalized;
@@ -1035,14 +1049,90 @@ $(document).ready(function () {
   }
 
   let entries = loadEntries();
+  let serverSyncQueue = Promise.resolve();
+  let serverSyncFailed = false;
+
+  function mergeEntrySets(serverEntries, localEntries) {
+    const merged = new Map(serverEntries.map((entry) => [entry.id, entry]));
+    localEntries.forEach((localEntry) => {
+      const serverEntry = merged.get(localEntry.id);
+      const localTimestamp = Date.parse(localEntry.updatedAt) || 0;
+      const serverTimestamp = Date.parse(serverEntry?.updatedAt) || 0;
+      if (!serverEntry || localTimestamp > serverTimestamp) {
+        merged.set(localEntry.id, localEntry);
+      }
+    });
+    return [...merged.values()];
+  }
+
+  function syncEntriesToServer(snapshot) {
+    const body = JSON.stringify({ entries: snapshot });
+    serverSyncQueue = serverSyncQueue
+      .catch(() => {})
+      .then(async () => {
+        const response = await fetch("expiry_storage.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body,
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error("Server JSON write failed");
+        }
+        serverSyncFailed = false;
+        storageError.hidden = true;
+      })
+      .catch(() => {
+        serverSyncFailed = true;
+        showStorageError("serverSyncError");
+      });
+    return serverSyncQueue;
+  }
+
+  async function loadServerEntries() {
+    try {
+      const response = await fetch("expiry_storage.php", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok || !result.success || !Array.isArray(result.entries)) {
+        throw new Error("Server JSON read failed");
+      }
+
+      if (!result.exists) {
+        if (entries.length > 0) syncEntriesToServer(entries);
+        return;
+      }
+
+      const serverEntries = normalizeEntries(result.entries);
+      const mergedEntries = mergeEntrySets(serverEntries, entries);
+      const localIsNewer =
+        JSON.stringify(mergedEntries) !== JSON.stringify(serverEntries);
+      entries = mergedEntries;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      } catch (error) {
+        showStorageError("storageError");
+      }
+      renderEntries();
+      if (localIsNewer) syncEntriesToServer(entries);
+    } catch (error) {
+      serverSyncFailed = true;
+      showStorageError("serverSyncError");
+      renderEntries();
+    }
+  }
 
   function saveEntries() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      const updatedAt = new Date().toISOString();
+      const updatedEntries = entries.map((entry) => ({ ...entry, updatedAt }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries));
+      entries = updatedEntries;
       storageError.hidden = true;
+      syncEntriesToServer(updatedEntries);
       return true;
     } catch (error) {
-      showStorageError();
+      showStorageError("storageError");
       return false;
     }
   }
@@ -1055,9 +1145,10 @@ $(document).ready(function () {
     return element;
   }
 
-  function showStorageError() {
+  function showStorageError(messageKey = "storageError") {
     storageError.hidden = false;
-    storageError.textContent = translate("storageError");
+    storageError.dataset.messageKey = messageKey;
+    storageError.textContent = translate(messageKey);
   }
 
   function dueEntriesFor(today) {
@@ -1398,7 +1489,11 @@ $(document).ready(function () {
   });
 
   renderEntries();
-  window.setInterval(renderEntries, 60000);
+  loadServerEntries();
+  window.setInterval(() => {
+    renderEntries();
+    if (serverSyncFailed) syncEntriesToServer(entries);
+  }, 60000);
 })();
 
 (() => {
