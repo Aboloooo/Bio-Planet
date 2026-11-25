@@ -175,12 +175,23 @@ $(document).ready(function () {
     }
   }
 
+  // Lowercase, strip accents (é -> e, ç -> c, ë -> e...) and collapse spaces,
+  // so "cerise" matches "cérises" and "chene" matches "chêne".
+  function normalizeForSearch(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   function displayProducts(filter = "") {
     const grid = $("#productGrid");
     grid.empty();
 
     let filtered = products;
-    const normalizedFilter = filter.trim().toLowerCase();
+    const normalizedFilter = normalizeForSearch(filter);
 
     // Apply category filter
     if (currentCategory !== "all") {
@@ -540,8 +551,8 @@ $(document).ready(function () {
     products = products.map((product) => ({
       ...product,
       displayName: smartTitleCase(product.name),
-      searchName: String(product.name || "").toLowerCase(),
-      searchId: String(product.id || "").toLowerCase(),
+      searchName: normalizeForSearch(product.name),
+      searchId: normalizeForSearch(product.id),
     }));
   }
 });
