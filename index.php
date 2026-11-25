@@ -140,7 +140,8 @@
                     <div class="expiry-field">
                         <label id="expiryRowLabel" for="rowPickerTrigger">Row Number</label>
                         <input id="expiryRow" name="rowNumber" type="hidden" value="1">
-                        <button id="rowPickerTrigger" class="row-picker-trigger" type="button" aria-haspopup="dialog" aria-controls="rowPickerOverlay">
+                        <input id="expiryRowEntry" class="sr-only" type="text" inputmode="numeric" data-keyboard="numeric" maxlength="3" tabindex="-1" aria-hidden="true">
+                        <button id="rowPickerTrigger" class="row-picker-trigger" type="button" aria-haspopup="dialog" aria-controls="touchKeyboard">
                             <span id="rowNumberDisplay">1</span><span id="rowPickerHint" class="row-picker-hint">Choose row</span>
                         </button>
                     </div>

@@ -28,9 +28,18 @@ window.bpToast = (function () {
   const setHeaderHeight = () => {
     const header = document.querySelector(".shop-header");
     if (header) document.documentElement.style.setProperty("--header-h", `${header.offsetHeight}px`);
+    const sw = document.querySelector(".app-switcher");
+    if (sw) document.documentElement.style.setProperty("--switcher-h", `${sw.offsetHeight}px`);
   };
   const update = () => {
     ticking = false;
+    const sw = document.querySelector(".app-switcher");
+    if (sw) {
+      const headerH = document.querySelector(".shop-header")?.offsetHeight || 76;
+      const stuck = window.scrollY > 4 && sw.getBoundingClientRect().top <= headerH + 1;
+      sw.classList.toggle("is-stuck", stuck);
+      document.documentElement.style.setProperty("--switcher-h", `${sw.offsetHeight}px`);
+    }
     const bar = document.querySelector(".search-container");
     const finder = document.getElementById("finderPanel");
     if (!bar || !finder || finder.hidden) return;
@@ -696,7 +705,7 @@ $(document).ready(function () {
       trackerTitle: "Expiry Date Tracker",
       eyebrow: "Stock rotation",
       rowNumber: "Row Number",
-      chooseRow: "Choose row",
+      chooseRow: "Enter number",
       productName: "Product Name",
       productNamePlaceholder: "e.g. Organic Milk",
       productId: "Product ID",
@@ -781,7 +790,7 @@ $(document).ready(function () {
       trackerTitle: "Suivi des dates d'expiration",
       eyebrow: "Rotation du stock",
       rowNumber: "Numéro de rangée",
-      chooseRow: "Choisir une rangée",
+      chooseRow: "Saisir le numéro",
       productName: "Nom du produit",
       productNamePlaceholder: "ex. Lait bio",
       productId: "ID produit",
@@ -867,7 +876,7 @@ $(document).ready(function () {
       trackerTitle: "Vervaldatums bijhouden",
       eyebrow: "Voorraadrotatie",
       rowNumber: "Rijnummer",
-      chooseRow: "Kies een rij",
+      chooseRow: "Nummer invoeren",
       productName: "Productnaam",
       productNamePlaceholder: "bijv. Biologische melk",
       productId: "Product-ID",
@@ -1930,7 +1939,7 @@ $(document).ready(function () {
     keyboardTitle.dataset.fieldId = input.id;
     input.inputMode = "none";
     const fieldKey =
-      input.id === "expiryProductName" ? "productName" : "productId";
+      input.id === "expiryProductName" ? "productName" : input.id === "expiryRowEntry" ? "rowNumber" : "productId";
     keyboardTitle.textContent = translate("keyboardTitle", translate(fieldKey));
     isShifted = false;
     updateKeyboardPreview();
@@ -2075,13 +2084,24 @@ $(document).ready(function () {
     rowPickerTrigger.focus({ preventScroll: true });
   }
 
+  // Shelf row is typed on the number pad, like the product ID (owner request).
+  const rowEntry = document.getElementById("expiryRowEntry");
+  const ROW_MAX = 170;
+  function syncRowFromEntry() {
+    const n = parseInt(rowEntry.value, 10);
+    if (Number.isFinite(n) && n >= 1) {
+      const row = String(Math.min(n, ROW_MAX));
+      rowInput.value = row;
+      rowDisplay.textContent = row;
+    }
+  }
+  rowEntry.addEventListener("input", syncRowFromEntry);
   rowPickerTrigger.addEventListener("click", () => {
-    keyboardOverlay.hidden = true;
-    calendarOverlay.hidden = true;
-    rowPickerOverlay.hidden = false;
-    rowWheel.scrollTop = (Number(rowInput.value || 1) - 1) * 40;
-    updateRowSelection();
-    rowWheel.focus({ preventScroll: true });
+    rowEntry.value = "";
+    openKeyboard(rowEntry, rowPickerTrigger);
+  });
+  document.getElementById("expiryForm").addEventListener("reset", () => {
+    setTimeout(() => { rowEntry.value = ""; rowDisplay.textContent = rowInput.value || "1"; }, 0);
   });
   rowPickerClose.addEventListener("click", closeRowPicker);
   rowPickerOverlay.addEventListener("click", (event) => {
@@ -2201,7 +2221,9 @@ $(document).ready(function () {
           const fieldKey =
             keyboardTarget.id === "expiryProductName"
               ? "productName"
-              : "productId";
+              : keyboardTarget.id === "expiryRowEntry"
+                ? "rowNumber"
+                : "productId";
           keyboardTitle.textContent = translate(
             "keyboardTitle",
             translate(fieldKey),

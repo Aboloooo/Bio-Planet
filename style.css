@@ -1211,7 +1211,12 @@
   .shop-name { font-family: var(--font-heading); font-size: 20px; line-height: 28px; font-weight: 700; color: var(--blue-700); margin: 0; letter-spacing: -0.2px; }
   .shop-subtitle { font-size: 14px; line-height: 20px; font-weight: 600; color: var(--text-secondary); margin: 0; opacity: 1; }
   /* App switcher: full-width bar between header and content (owner request: more noticeable) */
-  .app-switcher { display: flex; gap: 6px; margin: 20px 32px 0; padding: 6px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-xl); box-shadow: var(--shadow-raised); width: auto; }
+  .app-switcher { display: flex; gap: 6px; margin: 20px 32px 0; padding: 6px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-xl); box-shadow: var(--shadow-raised); width: auto;
+    position: sticky; top: var(--header-h, 76px); z-index: 45;
+    transition: margin 240ms ease, padding 240ms ease, border-radius 240ms ease, box-shadow 240ms ease; }
+  /* Scrolled: sticks right under the header and spreads to full width (more padding, square edges).
+     Back at the top: returns to the floating bar. */
+  .app-switcher.is-stuck { margin-left: 0; margin-right: 0; padding: 8px 32px; border-radius: 0; border-left-color: transparent; border-right-color: transparent; border-top-color: transparent; box-shadow: 0 8px 20px rgba(18, 35, 61, 0.1); }
   .app-tab { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 0 24px; border: 0; border-radius: var(--radius-lg); background: transparent; color: var(--blue-700); font-family: var(--font-body); font-size: 18px; font-weight: 700; box-shadow: none; cursor: pointer; }
   .app-tab::after { display: none; }
   .app-tab { flex: 1 1 0; white-space: nowrap; line-height: 24px; }
@@ -1237,8 +1242,8 @@
   .search-container::before { content: ""; width: 26px; height: 26px; flex: none; background: var(--blue-700); -webkit-mask: var(--i-search) center / contain no-repeat; mask: var(--i-search) center / contain no-repeat; }
   /* Search bar hides on scroll down, returns on scroll up (owner request).
      Leaving: 320ms ease-in, upward. Coming back: 200ms ease-out, a bit faster. */
-  .search-container { position: sticky; top: calc(var(--header-h, 76px) + 8px); z-index: 40; transition: transform 200ms ease-out, opacity 200ms ease-out; will-change: transform; }
-  .search-container.is-hidden { transform: translateY(calc(-100% - var(--header-h, 76px) - 16px)); opacity: 0; pointer-events: none; transition: transform 320ms ease-in, opacity 320ms ease-in; }
+  .search-container { position: sticky; top: calc(var(--header-h, 76px) + var(--switcher-h, 70px) + 10px); z-index: 40; transition: transform 200ms ease-out, opacity 200ms ease-out; will-change: transform; }
+  .search-container.is-hidden { transform: translateY(calc(-100% - var(--header-h, 76px) - var(--switcher-h, 70px) - 20px)); opacity: 0; pointer-events: none; transition: transform 320ms ease-in, opacity 320ms ease-in; }
   .search-container:focus-within { border-color: var(--blue-600); box-shadow: 0 0 0 3px rgba(0, 108, 180, 0.18); }
   #searchInput { flex: 1; height: 100%; padding: 0; border: 0; outline: 0; background: transparent; box-shadow: none; font-family: var(--font-body); font-size: 18px; font-weight: 500; color: var(--text-primary); }
   #searchInput::placeholder { color: var(--text-muted); opacity: 1; }
@@ -1462,6 +1467,7 @@
     .shop-header { height: auto; flex-wrap: wrap; gap: 10px; padding: 10px 16px; }
     .shop-title { flex: 1 1 auto; }
     .app-switcher { margin: 12px 16px 0; }
+    .app-switcher.is-stuck { margin-left: 0; margin-right: 0; padding: 6px 16px; }
     .date-filter-input { width: 130px; }
     .date-filter-collect { margin-left: 0; width: 100%; justify-content: center; }
     .app-tab { flex: 1 1 0; min-width: 0; justify-content: center; padding: 6px 8px; white-space: normal; text-align: center; line-height: 18px; }
