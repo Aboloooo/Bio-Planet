@@ -28,6 +28,8 @@
 }
 
 /* ---------- Base ---------- */
+/* The old theme's yellow-green (#c8d400) is replaced by brand blue everywhere. */
+body.rd { --bp-green: var(--blue-700); }
 body.rd { background: var(--bg-canvas); color: var(--text-primary); padding: 0; font-family: var(--font-body); font-size: 16px; line-height: 1.5; }
 body.rd .container { max-width: none; margin: 0; padding: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; min-height: 100vh; }
 body.rd :focus-visible { outline: 3px solid var(--blue-600); outline-offset: 2px; }
@@ -79,7 +81,7 @@ body.rd .category-btn { display: inline-flex; align-items: center; gap: 10px; mi
 body.rd .category-btn .chip-count { padding: 3px 9px; border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-secondary); font-size: 14px; font-weight: 600; line-height: 20px; }
 body.rd .category-btn .chip-count:empty { display: none; }
 body.rd .category-btn.active { background: var(--blue-700); border-color: var(--blue-700); color: var(--text-on-brand); }
-body.rd .category-btn.active .chip-count { background: var(--green-500); color: var(--text-primary); }
+body.rd .category-btn.active .chip-count { background: var(--bg-surface); color: var(--blue-700); }
 body.rd .category-btn:active { transform: scale(0.98); }
 
 /* ---------- Product grid + cards ---------- */
@@ -125,7 +127,7 @@ body.rd #modalImage { contain: size; width: 100%; height: 100%; min-height: 340p
 body.rd .modal-info { display: flex; flex-direction: column; gap: 18px; padding: 0; text-align: left; }
 body.rd .close { position: absolute; top: 24px; right: 32px; width: var(--tap); height: var(--tap); padding: 0; border: 0; border-radius: var(--radius-md); background: var(--bg-subtle); color: transparent; font-size: 0; cursor: pointer; z-index: 2; }
 body.rd .close::before { content: ""; position: absolute; inset: 14px; background: var(--text-secondary); -webkit-mask: var(--i-x) center / contain no-repeat; mask: var(--i-x) center / contain no-repeat; }
-body.rd .category-tag { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 6px 10px; border-radius: var(--radius-sm); background: var(--green-100); color: var(--green-700); font-size: 14px; font-weight: 600; line-height: 20px; min-height: 32px; margin-right: 64px; }
+body.rd .category-tag { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 6px 10px; border-radius: var(--radius-sm); background: var(--blue-50); color: var(--blue-700); font-size: 14px; font-weight: 600; line-height: 20px; min-height: 32px; margin-right: 64px; }
 body.rd .category-tag::before { content: ""; width: 14px; height: 14px; background: currentColor; -webkit-mask: var(--i-tag) center / contain no-repeat; mask: var(--i-tag) center / contain no-repeat; }
 body.rd #modalName { font-family: var(--font-heading); font-size: 28px; line-height: 36px; font-weight: 700; color: var(--text-primary); margin: 0; letter-spacing: -0.3px; }
 body.rd .modal-id-block { display: flex; flex-direction: column; gap: 2px; padding: 16px 20px 18px; background: var(--blue-50); border: 1px solid var(--blue-100); border-radius: var(--radius-lg); }
@@ -140,7 +142,7 @@ body.rd .toast { position: fixed; left: 50%; bottom: 32px; transform: translateX
 body.rd .toast[hidden] { display: none; }
 body.rd .toast:not(:has(.toast-action:not([hidden]))) { padding-right: 22px; }
 @keyframes rdToastIn { from { opacity: 0; transform: translate(-50%, 16px); } }
-body.rd .toast-check { width: 24px; height: 24px; border-radius: 50%; background: var(--green-500); position: relative; flex: none; }
+body.rd .toast-check { width: 24px; height: 24px; border-radius: 50%; background: var(--bg-surface); position: relative; flex: none; }
 body.rd .toast-check::before { content: ""; position: absolute; inset: 4px; background: var(--text-primary); -webkit-mask: var(--i-check) center / contain no-repeat; mask: var(--i-check) center / contain no-repeat; }
 body.rd .toast-action { min-height: var(--tap); padding: 0 16px; border: 0; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.12); color: var(--text-on-brand); font-weight: 700; font-size: 16px; cursor: pointer; }
 
@@ -235,11 +237,33 @@ body.rd .expiry-save-btn { display: inline-flex; align-items: center; justify-co
 body.rd .expiry-save-btn::before { content: ""; width: 20px; height: 20px; background: currentColor; -webkit-mask: var(--i-plus) center / contain no-repeat; mask: var(--i-plus) center / contain no-repeat; }
 body.rd .expiry-save-btn:active { background: var(--blue-800); }
 
-/* Overlays (keyboard, calendar, row picker, remove confirm): align colours with the system */
+/* Overlays: on-screen keyboard, calendar, row picker, remove confirmation — white panels, blue accents */
 body.rd .touch-overlay { background: rgba(18, 35, 61, 0.55); }
-body.rd .remove-confirm, body.rd .touch-calendar, body.rd .row-picker-dialog, body.rd .touch-keyboard { border-radius: var(--radius-xl); box-shadow: var(--shadow-overlay); }
-body.rd .remove-confirm-btn { min-height: var(--tap); border-radius: var(--radius-lg); background: var(--danger); color: var(--text-on-brand); border: 0; font-weight: 700; }
-body.rd .remove-cancel-btn { min-height: var(--tap); border-radius: var(--radius-lg); background: var(--bg-subtle); color: var(--text-primary); border: 0; font-weight: 700; }
+body.rd .touch-keyboard, body.rd .touch-calendar, body.rd .row-picker-dialog, body.rd .remove-confirm { background: var(--bg-surface); color: var(--text-primary); border: 0; border-radius: var(--radius-xl); box-shadow: var(--shadow-overlay); }
+body.rd .touch-overlay-heading h2, body.rd .calendar-heading h2, body.rd .remove-confirm h2 { color: var(--text-primary); font-family: var(--font-heading); font-weight: 700; }
+body.rd .remove-confirm p, body.rd .row-picker-selection, body.rd .calendar-weekdays { color: var(--text-secondary); }
+body.rd .touch-overlay-heading .touch-cancel { min-width: var(--tap); min-height: var(--tap); border: 0; border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-secondary); }
+body.rd .keyboard-preview { background: var(--bg-surface); border: 1.5px solid var(--blue-600); border-radius: var(--radius-lg); color: var(--text-primary); box-shadow: 0 0 0 3px rgba(0, 108, 180, 0.15); }
+body.rd .keyboard-preview > span:first-child { color: var(--text-muted); }
+body.rd .keyboard-caret { border-color: var(--blue-700); }
+body.rd .touch-key { min-height: var(--tap); background: var(--bg-subtle); border: 1px solid var(--border-default); border-radius: var(--radius-md); color: var(--text-primary); font-weight: 700; box-shadow: none; }
+body.rd .touch-key:active { background: var(--blue-100); }
+body.rd .touch-key.utility-key, body.rd .keyboard-language { min-height: var(--tap); background: var(--blue-50); border: 1px solid var(--blue-100); border-radius: var(--radius-md); color: var(--blue-700); }
+body.rd .touch-key.keyboard-submit-key, body.rd .touch-done { min-height: var(--tap); background: var(--blue-700); border: 0; border-radius: var(--radius-lg); color: var(--text-on-brand); font-weight: 700; }
+body.rd .touch-done:active, body.rd .touch-key.keyboard-submit-key:active { background: var(--blue-800); }
+body.rd .row-wheel { background: linear-gradient(to bottom, transparent 79px, var(--blue-700) 79px 121px, transparent 121px), var(--bg-subtle); border-radius: var(--radius-lg); }
+body.rd .row-wheel-option { color: var(--text-muted); }
+body.rd .row-wheel-option.selected { background: transparent; color: var(--text-on-brand); font-weight: 800; }
+body.rd .row-picker-selection strong { color: var(--blue-700); font-family: var(--font-heading); font-weight: 800; }
+body.rd .calendar-nav { min-width: var(--tap); min-height: var(--tap); background: var(--blue-50); border: 0; border-radius: var(--radius-md); color: var(--blue-700); }
+body.rd .calendar-day { min-height: var(--tap); background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); color: var(--text-primary); font-weight: 600; }
+body.rd .calendar-day:active { background: var(--blue-50); }
+body.rd .calendar-day.today { border: 2px solid var(--blue-600); color: var(--blue-700); }
+body.rd .calendar-day.selected { background: var(--blue-700); border-color: var(--blue-700); color: var(--text-on-brand); }
+body.rd .calendar-cancel { min-height: var(--tap); background: var(--bg-subtle); border: 0; border-radius: var(--radius-lg); color: var(--text-primary); font-weight: 700; }
+body.rd .remove-confirm-btn { min-height: var(--tap); border: 0; border-radius: var(--radius-lg); background: var(--danger); color: var(--text-on-brand); font-weight: 700; }
+body.rd .remove-cancel-btn { min-height: var(--tap); border: 0; border-radius: var(--radius-lg); background: var(--bg-subtle); color: var(--text-primary); font-weight: 700; }
+body.rd .copy-btn { background: var(--blue-700); color: var(--text-on-brand); border-color: var(--blue-700); }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1023px) {

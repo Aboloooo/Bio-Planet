@@ -16,9 +16,7 @@ Brand colors are taken from the Bio-Planet logo (`Images/Bio-Planet icon.png`). 
 | `brand/blue-600` | `#006CB4` | Logo globe blue. Focus ring |
 | `brand/blue-100` | `#DCE8F6` | Borders of blue-tinted surfaces |
 | `brand/blue-50` | `#EEF4FB` | ID boxes, secondary buttons, icon buttons |
-| `brand/green-500` | `#90A824` | Accent (logo leaf). Only as a fill behind dark text (5.9:1) — never behind white text (2.7:1, fails) |
-| `brand/green-700` | `#56701A` | Green text and icons (5.6:1 on white, 5.0:1 on green-100) |
-| `brand/green-100` | `#EEF4DA` | Category tags |
+| `brand/green-500` | `#90A824` | Logo leaf only. **Not used in the UI** — on screen it reads as yellow. Highlights use blue instead |
 | `bg/canvas` | `#F5F6F2` | Screen background |
 | `bg/surface` | `#FFFFFF` | Cards, header, inputs, dialogs |
 | `bg/subtle` | `#F0F2F5` | Segmented controls, list rows |
@@ -66,7 +64,7 @@ Shadows: **raised** `0 2 8 rgba(18,35,61,.06)` for cards; **overlay** `0 24 60 r
 ## Components
 
 - **Button** — Primary (blue-700, white text), Secondary (blue-50, blue-700 text, blue-100 border), Ghost (text only). Min height 48, padding 14×22, radius lg, icon left. States: pressed = blue-800, focus = 3 px blue-600 ring, disabled = 40 % opacity.
-- **Category Chip** — 48 px tall pill, label + count bubble. Selected: blue-700 fill, count on green-500 with dark text.
+- **Category Chip** — 48 px tall pill, label + count bubble. Selected: blue-700 fill, count bubble white with blue-700 text.
 - **Product Card** — photo 4:3, name (H3, 2 lines max), ID box (blue-50) with large ID and a 40 px copy button.
 - **Text Field** — label above, 56 px input, `border/strong` outline, trailing button: keyboard / keypad / calendar.
 - **Status Badge** — Collect, Soon, Expired, OK; icon + word, radius sm.
@@ -89,4 +87,4 @@ One word per idea, matching what staff already say:
 
 ## Avoid
 
-Blue fills on every surface, yellow-green accents, text on green-500 in white, tiny "Retirer" links, color-only status.
+Blue fills on every surface, any yellow or yellow-green (the old #C8D400), text on green-500 in white, tiny "Retirer" links, color-only status.
