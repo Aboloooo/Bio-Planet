@@ -919,7 +919,7 @@ $(document).ready(function () {
   // Redesign wording: one word per idea (collecter / supprimer du suivi), no emoji in labels.
   Object.assign(labels.fr, {
     heading: "À collecter aujourd'hui",
-    empty: "Rien à collecter aujourd'hui. Les produits apparaissent ici 10 jours avant leur date d'expiration.",
+    empty: "Rien à collecter aujourd'hui. Les produits apparaissent ici moins de 3 jours avant leur date d'expiration.",
     collected: "Collecté", collect: "À collecter", soon: "Expire bientôt", expired: "Expiré", ok: "OK",
     markCollected: "Marquer collecté", markedCollected: "Collecté",
     remove: "Supprimer", removeLabel: (name) => `Supprimer ${name} du suivi`,
@@ -930,26 +930,44 @@ $(document).ready(function () {
     trackedProducts: "Tous les produits suivis", addProduct: "Ajouter au suivi", trackerTitle: "Suivi des dates",
     rowNumber: "Rangée",
     tiles: ["À collecter", "Expire bientôt", "OK", "Collectés"],
+    tileHints: ["moins de 3 jours", "10 jours ou moins", "plus de 10 jours", ""],
+    period: "Période", from: "Du", to: "Au", clear: "Effacer",
+    inPeriod: (n) => `${n} produit${n === 1 ? "" : "s"} dans la période`,
+    collectAll: (n) => `Marquer ${n} collecté${n === 1 ? "" : "s"}`,
+    collectedMany: (n) => `${n} produit${n === 1 ? "" : "s"} marqué${n === 1 ? "" : "s"} collecté${n === 1 ? "" : "s"}`,
+    trackedProductsHelp: "Expire bientôt : 10 jours ou moins · À collecter : moins de 3 jours",
     rowShort: "Rangée", expiresOn: (d) => `expire le ${d}`, collectedToast: (n) => `${n} marqué collecté`, undo: "Annuler",
   });
   Object.assign(labels.en, {
     heading: "To collect today",
-    empty: "Nothing to collect today. Products appear here 10 days before they expire.",
+    empty: "Nothing to collect today. Products appear here less than 3 days before they expire.",
     collected: "Collected", collect: "Collect", soon: "Expiring soon", expired: "Expired", ok: "OK",
     markCollected: "Mark collected", markedCollected: "Collected", remove: "Delete", confirmRemove: "Delete", cancel: "Keep",
     removeTitle: "Delete from tracker?", showCollected: "Show collected", hideCollected: "Hide collected",
     trackedProducts: "All tracked products", addProduct: "Add to tracker", trackerTitle: "Expiry tracker", rowNumber: "Row",
     tiles: ["To collect", "Expiring soon", "OK", "Collected"],
+    tileHints: ["under 3 days", "10 days or less", "over 10 days", ""],
+    period: "Period", from: "From", to: "To", clear: "Clear",
+    inPeriod: (n) => `${n} product${n === 1 ? "" : "s"} in this period`,
+    collectAll: (n) => `Mark ${n} collected`,
+    collectedMany: (n) => `${n} product${n === 1 ? "" : "s"} marked collected`,
+    trackedProductsHelp: "Expiring soon: 10 days or less · To collect: under 3 days",
     rowShort: "Row", expiresOn: (d) => `expires ${d}`, collectedToast: (n) => `${n} marked collected`, undo: "Undo",
   });
   Object.assign(labels.nl, {
     heading: "Vandaag te verzamelen",
-    empty: "Vandaag niets te verzamelen. Producten verschijnen hier 10 dagen voor de vervaldatum.",
+    empty: "Vandaag niets te verzamelen. Producten verschijnen hier minder dan 3 dagen voor de vervaldatum.",
     collected: "Verzameld", collect: "Verzamelen", soon: "Verloopt binnenkort", expired: "Verlopen", ok: "OK",
     markCollected: "Markeer verzameld", markedCollected: "Verzameld", remove: "Verwijderen", confirmRemove: "Verwijderen", cancel: "Behouden",
     showCollected: "Toon verzamelde", hideCollected: "Verberg verzamelde",
     trackedProducts: "Alle gevolgde producten", addProduct: "Toevoegen", trackerTitle: "Vervaldatums", rowNumber: "Rij",
     tiles: ["Te verzamelen", "Verloopt binnenkort", "OK", "Verzameld"],
+    tileHints: ["minder dan 3 dagen", "10 dagen of minder", "meer dan 10 dagen", ""],
+    period: "Periode", from: "Van", to: "Tot", clear: "Wissen",
+    inPeriod: (n) => `${n} product${n === 1 ? "" : "en"} in deze periode`,
+    collectAll: (n) => `${n} markeren als verzameld`,
+    collectedMany: (n) => `${n} product${n === 1 ? "" : "en"} gemarkeerd als verzameld`,
+    trackedProductsHelp: "Verloopt binnenkort: 10 dagen of minder · Te verzamelen: minder dan 3 dagen",
     rowShort: "Rij", expiresOn: (d) => `vervalt ${d}`, collectedToast: (n) => `${n} gemarkeerd als verzameld`, undo: "Ongedaan maken",
   });
 
@@ -958,22 +976,48 @@ $(document).ready(function () {
     return new Intl.DateTimeFormat(currentLocale(), { day: "numeric", month: "short" }).format(new Date(y, m - 1, d));
   }
 
+  // Status rules (set by the store owner, Nov 2026):
+  //   À collecter   = not collected and expiring in less than 3 days (expired included)
+  //   Expire bientôt = not collected and expiring in 10 days or less
+  const COLLECT_DAYS = 3;
+  const SOON_DAYS = 10;
+  function entryStatus(entry, today) {
+    if (entry.collected) return "collected";
+    const days = daysBetween(today, entry.expiryDate);
+    if (days < 0) return "expired";
+    if (days < COLLECT_DAYS) return "collect";
+    if (days <= SOON_DAYS) return "soon";
+    return "ok";
+  }
+  const isToCollect = (entry, today) => !entry.collected && daysBetween(today, entry.expiryDate) < COLLECT_DAYS;
+
+  const filterFrom = document.getElementById("filterFrom");
+  const filterTo = document.getElementById("filterTo");
+  const filterClear = document.getElementById("filterClear");
+  const filterSummary = document.getElementById("filterSummary");
+  const collectRange = document.getElementById("collectRange");
+  const inRange = (entry) =>
+    (!filterFrom.value || entry.expiryDate >= filterFrom.value) &&
+    (!filterTo.value || entry.expiryDate <= filterTo.value);
+
   function renderSummary(today) {
     const box = document.getElementById("expirySummary");
     if (!box) return;
     const active = entries.filter((e) => !e.removed);
     const open = active.filter((e) => !e.collected);
-    const due = open.filter((e) => today >= e.alertDate).length;
-    const soon = open.filter((e) => today < e.alertDate && daysBetween(today, e.alertDate) < ALERT_LEAD_DAYS).length;
-    const ok = open.length - due - soon;
+    const due = open.filter((e) => daysBetween(today, e.expiryDate) < COLLECT_DAYS).length;
+    const soon = open.filter((e) => daysBetween(today, e.expiryDate) <= SOON_DAYS).length;
+    const ok = open.filter((e) => daysBetween(today, e.expiryDate) > SOON_DAYS).length;
     const done = active.length - open.length;
     const names = translate("tiles");
+    const hints = translate("tileHints");
     box.replaceChildren();
     [[due, "collect"], [soon, "soon"], [ok, "ok"], [done, "collected"]].forEach(([n, kind], i) => {
       const tile = document.createElement("div");
       tile.className = `summary-tile ${kind}`;
       appendTextElement(tile, "strong", "", String(n));
       appendTextElement(tile, "span", "", names[i]);
+      if (hints[i]) appendTextElement(tile, "small", "", hints[i]);
       box.append(tile);
     });
   }
@@ -1301,9 +1345,7 @@ $(document).ready(function () {
     return entries
       .filter(
         (entry) =>
-          entry.collected === false &&
-          entry.removed === false &&
-          today >= entry.alertDate,
+          entry.removed === false && isToCollect(entry, today),
       )
       .sort((first, second) =>
         first.expiryDate.localeCompare(second.expiryDate),
@@ -1319,7 +1361,7 @@ $(document).ready(function () {
         entry &&
         entry.collected === true &&
         entry.removed === false &&
-        today >= entry.alertDate
+        daysBetween(today, entry.expiryDate) < COLLECT_DAYS
       ) {
         visibleDue.push(entry);
       }
@@ -1393,8 +1435,9 @@ $(document).ready(function () {
     const today = todayKey();
     const visibleEntries = entries.filter((entry) => entry.removed === false);
     const displayedEntries = visibleEntries.filter(
-      (entry) => showCollected || entry.collected === false,
+      (entry) => (showCollected || entry.collected === false) && inRange(entry),
     );
+    renderFilter(visibleEntries);
     translateTrackerUi();
     entriesBody.replaceChildren();
     entryCount.textContent = translate("items", visibleEntries.length);
@@ -1431,8 +1474,7 @@ $(document).ready(function () {
           entriesBody.append(groupRow);
           previousMonth = monthKey;
         }
-        const daysToAlert = daysBetween(today, entry.alertDate);
-        const isExpired = today > entry.expiryDate;
+        const statusClass = entryStatus(entry, today);
         const row = document.createElement("tr");
         [
           entry.rowNumber,
@@ -1445,24 +1487,7 @@ $(document).ready(function () {
         });
 
         const statusCell = document.createElement("td");
-        const statusClass = entry.collected
-          ? "collected"
-          : isExpired
-            ? "expired"
-            : today >= entry.alertDate
-              ? "collect"
-              : daysToAlert < ALERT_LEAD_DAYS
-                ? "soon"
-                : "ok";
-        const statusText = entry.collected
-          ? translate("collected")
-          : statusClass === "expired"
-            ? translate("expired")
-            : statusClass === "collect"
-              ? translate("collect")
-              : statusClass === "soon"
-                ? translate("soon")
-                : translate("ok");
+        const statusText = translate(statusClass);
         appendTextElement(
           statusCell,
           "span",
@@ -1470,6 +1495,12 @@ $(document).ready(function () {
           statusText,
         );
 
+        if (!entry.collected) {
+          const rowCollect = appendTextElement(statusCell, "button", "expiry-collect-btn", translate("markCollected"));
+          rowCollect.type = "button";
+          rowCollect.dataset.collectId = entry.id;
+          rowCollect.setAttribute("aria-label", `${translate("markCollected")} : ${entry.productName}`);
+        }
         const removeButton = appendTextElement(
           statusCell,
           "button",
@@ -1581,12 +1612,52 @@ $(document).ready(function () {
       closeRemoveConfirm();
   });
 
+  function renderFilter(visibleEntries) {
+    const active = Boolean(filterFrom.value || filterTo.value);
+    filterClear.hidden = !active;
+    document.getElementById("dateFilterLabel").textContent = translate("period");
+    filterFrom.placeholder = translate("from"); filterFrom.setAttribute("aria-label", translate("from"));
+    filterTo.placeholder = translate("to"); filterTo.setAttribute("aria-label", translate("to"));
+    filterClear.textContent = translate("clear");
+    const fmt = (key) => (key ? formatShortDate(key) : "");
+    filterFrom.dataset.display = fmt(filterFrom.value);
+    filterTo.dataset.display = fmt(filterTo.value);
+    const matching = visibleEntries.filter((e) => inRange(e) && (showCollected || !e.collected));
+    const toCollect = matching.filter((e) => !e.collected);
+    filterSummary.textContent = active ? translate("inPeriod", matching.length) : "";
+    collectRange.hidden = !active || toCollect.length === 0;
+    collectRange.textContent = translate("collectAll", toCollect.length);
+  }
+  [filterFrom, filterTo].forEach((input) => input.addEventListener("change", () => renderEntries()));
+  filterClear.addEventListener("click", () => { filterFrom.value = ""; filterTo.value = ""; renderEntries(); });
+  collectRange.addEventListener("click", () => {
+    const ids = entries.filter((e) => !e.removed && !e.collected && inRange(e)).map((e) => e.id);
+    if (!ids.length) return;
+    ids.forEach((id) => { const e = entries.find((c) => c.id === id); if (e) e.collected = true; });
+    if (!saveEntries()) return;
+    renderEntries();
+    window.bpToast(translate("collectedMany", ids.length), {
+      label: translate("undo"),
+      onClick: () => {
+        ids.forEach((id) => { const e = entries.find((c) => c.id === id); if (e) e.collected = false; });
+        saveEntries();
+        renderEntries();
+      },
+    });
+  });
+
+  entriesBody.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-collect-id]");
+    if (button) collectEntry(button.dataset.collectId);
+  });
+
   collectionEntries.addEventListener("click", (event) => {
     const collectButton = event.target.closest("button[data-collect-id]");
-    if (!collectButton) return;
-    const entry = entries.find(
-      (candidate) => candidate.id === collectButton.dataset.collectId,
-    );
+    if (collectButton) collectEntry(collectButton.dataset.collectId);
+  });
+
+  function collectEntry(id) {
+    const entry = entries.find((candidate) => candidate.id === id);
     if (!entry || entry.collected || entry.removed) return;
 
     entry.collected = true;
@@ -1613,7 +1684,7 @@ $(document).ready(function () {
       recentlyCollected.delete(entry.id);
       renderEntries();
     }, 700);
-  });
+  }
 
   collectionToggle.addEventListener("click", () => {
     if (collectionToggle.disabled) return;
@@ -1685,6 +1756,7 @@ $(document).ready(function () {
   let keyboardOriginalValue = "";
   let keyboardOriginalInputMode = "text";
   let calendarMonth = new Date();
+  let calendarTarget = null; // the input the calendar is filling
   let isShifted = false;
   let keyboardStart = 0;
   let keyboardEnd = 0;
@@ -2031,13 +2103,14 @@ $(document).ready(function () {
         }),
       );
       if (dateKey === todayKey) button.classList.add("today");
-      if (expiryDateInput.value === dateKey) button.classList.add("selected");
+      if (calendarTarget && calendarTarget.value === dateKey) button.classList.add("selected");
       calendarDays.append(button);
     }
   }
 
-  expiryDateInput.addEventListener("click", () => {
-    const selectedParts = expiryDateInput.value.match(
+  function openCalendar(input) {
+    calendarTarget = input;
+    const selectedParts = input.value.match(
       /^(\d{4})-(\d{2})-(\d{2})$/,
     );
     calendarMonth = selectedParts
@@ -2046,6 +2119,11 @@ $(document).ready(function () {
     renderCalendar();
     keyboardOverlay.hidden = true;
     calendarOverlay.hidden = false;
+  }
+  expiryDateInput.addEventListener("click", () => openCalendar(expiryDateInput));
+  ["filterFrom", "filterTo"].forEach((id) => {
+    const input = document.getElementById(id);
+    if (input) input.addEventListener("click", () => openCalendar(input));
   });
 
   calendarOverlay.addEventListener("click", (event) => {
@@ -2054,7 +2132,7 @@ $(document).ready(function () {
       event.target.closest("[data-calendar-action='close']")
     ) {
       calendarOverlay.hidden = true;
-      expiryDateInput.focus({ preventScroll: true });
+      (calendarTarget || expiryDateInput).focus({ preventScroll: true });
       return;
     }
 
@@ -2069,10 +2147,11 @@ $(document).ready(function () {
 
     const dayButton = event.target.closest("button[data-date]");
     if (dayButton) {
-      expiryDateInput.value = dayButton.dataset.date;
-      expiryDateInput.dispatchEvent(new Event("change", { bubbles: true }));
+      const target = calendarTarget || expiryDateInput;
+      target.value = dayButton.dataset.date;
+      target.dispatchEvent(new Event("change", { bubbles: true }));
       calendarOverlay.hidden = true;
-      expiryDateInput.focus({ preventScroll: true });
+      target.focus({ preventScroll: true });
     }
   });
 

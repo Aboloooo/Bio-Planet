@@ -24,14 +24,6 @@
                     <div id="shopSubtitle" class="shop-subtitle">Product ID Finder</div>
                 </div>
             </div>
-            <nav class="app-switcher" role="tablist" aria-label="Choose app">
-                <button id="finderTab" class="app-tab active" type="button" role="tab" aria-selected="true" aria-controls="finderPanel">
-                    <span aria-hidden="true">🔍</span><span id="finderTabLabel">Product Finder</span>
-                </button>
-                <button id="expiryTab" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="expiryPanel" tabindex="-1">
-                    <span aria-hidden="true">📅</span><span id="expiryTabLabel">Expiry Tracker</span>
-                </button>
-            </nav>
             <div class="language-selector" aria-label="Language">
                 <button class="lang-btn" data-lang="en">EN</button>
                 <button class="lang-btn active" data-lang="fr">FR</button>
@@ -44,6 +36,15 @@
         </div>
 
 
+
+        <nav class="app-switcher" role="tablist" aria-label="Choose app">
+            <button id="finderTab" class="app-tab active" type="button" role="tab" aria-selected="true" aria-controls="finderPanel">
+                <span aria-hidden="true">🔍</span><span id="finderTabLabel">Product Finder</span>
+            </button>
+            <button id="expiryTab" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="expiryPanel" tabindex="-1">
+                <span aria-hidden="true">📅</span><span id="expiryTabLabel">Expiry Tracker</span>
+            </button>
+        </nav>
 
         <div class="app-panels">
             <section id="finderPanel" class="finder-panel active" role="tabpanel" aria-label="Product ID Finder" tabindex="0">
@@ -174,6 +175,15 @@
                         <span id="trackedProductsHelp">Alerts begin 10 days before expiry</span>
                     </div>
                     <button id="collectedFilterToggle" class="collected-filter-toggle" type="button">Show Collected</button>
+                </div>
+                <div class="date-filter" role="group" aria-labelledby="dateFilterLabel">
+                    <span id="dateFilterLabel" class="date-filter-label">Période</span>
+                    <input id="filterFrom" class="date-filter-input" type="text" inputmode="none" readonly placeholder="Du" aria-label="Du">
+                    <span class="date-filter-sep" aria-hidden="true">→</span>
+                    <input id="filterTo" class="date-filter-input" type="text" inputmode="none" readonly placeholder="Au" aria-label="Au">
+                    <button id="filterClear" class="date-filter-clear" type="button" hidden>Effacer</button>
+                    <span id="filterSummary" class="date-filter-summary" aria-live="polite"></span>
+                    <button id="collectRange" class="date-filter-collect" type="button" hidden></button>
                 </div>
                 <div class="expiry-table-wrap">
                     <table class="expiry-table">
