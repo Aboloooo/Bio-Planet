@@ -5,15 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Find Bio-Planet product IDs by searching products and categories.">
-    <title>Bio-Planet Product Finder</title>
+    <title>Bio-Planet · Outils magasin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="redesign.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 
-<body>
+<body class="rd">
     <div class="container">
         <!-- Shop Header -->
         <div class="shop-header">
@@ -24,6 +25,14 @@
                     <div id="shopSubtitle" class="shop-subtitle">Product ID Finder</div>
                 </div>
             </div>
+            <nav class="app-switcher" role="tablist" aria-label="Choose app">
+                <button id="finderTab" class="app-tab active" type="button" role="tab" aria-selected="true" aria-controls="finderPanel">
+                    <span aria-hidden="true">🔍</span><span id="finderTabLabel">Product Finder</span>
+                </button>
+                <button id="expiryTab" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="expiryPanel" tabindex="-1">
+                    <span aria-hidden="true">📅</span><span id="expiryTabLabel">Expiry Tracker</span>
+                </button>
+            </nav>
             <div class="language-selector" aria-label="Language">
                 <button class="lang-btn" data-lang="en">EN</button>
                 <button class="lang-btn active" data-lang="fr">FR</button>
@@ -35,14 +44,7 @@
             </div>
         </div>
 
-        <nav class="app-switcher" role="tablist" aria-label="Choose app">
-            <button id="finderTab" class="app-tab active" type="button" role="tab" aria-selected="true" aria-controls="finderPanel">
-                <span aria-hidden="true">🔍</span><span id="finderTabLabel">Product Finder</span>
-            </button>
-            <button id="expiryTab" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="expiryPanel" tabindex="-1">
-                <span aria-hidden="true">📅</span><span id="expiryTabLabel">Expiry Tracker</span>
-            </button>
-        </nav>
+
 
         <div class="app-panels">
             <section id="finderPanel" class="finder-panel active" role="tabpanel" aria-label="Product ID Finder" tabindex="0">
@@ -72,14 +74,14 @@
 
                 <!-- Category Filter -->
                 <div class="category-filter">
-                    <button class="category-btn active" data-category="all">All</button>
-                    <button class="category-btn" data-category="fruits">Fruits</button>
-                    <button class="category-btn" data-category="vegetables">Vegetables</button>
-                    <button class="category-btn" data-category="sweets">Sweets</button>
-                    <button class="category-btn" data-category="bread">Bread</button>
-                    <button class="category-btn" data-category="nuts">Nuts</button>
-                    <button class="category-btn" data-category="sec">Sec</button>
-                    <button class="category-btn" data-category="etc">Other</button>
+                    <button class="category-btn active" data-category="all"><span class="chip-label">All</span><span class="chip-count"></span></button>
+                    <button class="category-btn" data-category="fruits"><span class="chip-label">Fruits</span><span class="chip-count"></span></button>
+                    <button class="category-btn" data-category="vegetables"><span class="chip-label">Vegetables</span><span class="chip-count"></span></button>
+                    <button class="category-btn" data-category="sweets"><span class="chip-label">Sweets</span><span class="chip-count"></span></button>
+                    <button class="category-btn" data-category="bread"><span class="chip-label">Bread</span><span class="chip-count"></span></button>
+                    <button class="category-btn" data-category="nuts"><span class="chip-label">Nuts</span><span class="chip-count"></span></button>
+                    <button class="category-btn" data-category="sec"><span class="chip-label">Sec</span><span class="chip-count"></span></button>
+                    <button class="category-btn" data-category="etc"><span class="chip-label">Other</span><span class="chip-count"></span></button>
                 </div>
 
                 <!-- Product Grid -->
@@ -117,6 +119,8 @@
                     </div>
                     <span id="expiryEntryCount" class="expiry-count">0 items</span>
                 </div>
+
+                <div id="expirySummary" class="summary-tiles" aria-live="polite"></div>
 
                 <button id="collectionToggle" class="collection-toggle" type="button" aria-live="polite" aria-expanded="false" aria-controls="collectionPanel" disabled>
                     📋 Liste de collecte du jour (0)
@@ -250,21 +254,24 @@
                 <div class="modal-body">
                     <img id="modalImage" src="" alt="">
                     <div class="modal-info">
+                        <span id="modalCategory" class="category-tag"></span>
                         <h2 id="modalName"></h2>
-                        <div class="modal-id-row">
-                            <span class="label">Product ID:</span>
+                        <div class="modal-id-block">
+                            <span class="label" id="modalIdLabel">Identifiant produit</span>
                             <span id="modalId" class="id-value"></span>
-                            <button id="copyIdBtn" class="copy-btn">Copy</button>
                         </div>
-                        <div class="product-category">
-                            <span class="label">Category:</span>
-                            <span id="modalCategory"></span>
+                        <p class="modal-hint" id="modalHint">Saisissez cet ID sur la balance ou à la caisse.</p>
+                        <div class="modal-actions">
+                            <button id="copyIdBtn" class="btn btn--primary btn-icon-copy" type="button">Copier l'ID</button>
+                            <button id="addToTrackerBtn" class="btn btn--secondary btn-icon-calendar" type="button">Ajouter au suivi des dates</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden><span class="toast-check" aria-hidden="true"></span><span id="toastMessage"></span><button id="toastAction" class="toast-action" type="button" hidden></button></div>
 
     <script src="script.js"></script>
 </body>

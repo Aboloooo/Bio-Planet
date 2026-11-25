@@ -1,3 +1,26 @@
+// Short feedback message at the bottom of the screen (optionally with an undo-style action).
+window.bpToast = (function () {
+  let timer = null;
+  return function (message, action) {
+    const toast = document.getElementById("toast");
+    if (!toast) return;
+    const actionBtn = document.getElementById("toastAction");
+    document.getElementById("toastMessage").textContent = message;
+    actionBtn.hidden = !action;
+    actionBtn.onclick = null;
+    if (action) {
+      actionBtn.textContent = action.label;
+      actionBtn.onclick = () => {
+        toast.hidden = true;
+        action.onClick();
+      };
+    }
+    toast.hidden = false;
+    clearTimeout(timer);
+    timer = setTimeout(() => (toast.hidden = true), action ? 6000 : 4000);
+  };
+})();
+
 $(document).ready(function () {
   let products = [];
   let currentLang = "fr";
@@ -8,6 +31,13 @@ $(document).ready(function () {
   const translations = {
     en: {
       searchPlaceholder: "Search by product name or ID...",
+      idLabel: "Product ID",
+      idCopied: (id) => `ID ${id} copied`,
+      copyId: "Copy ID",
+      copyIdLabel: (id) => `Copy ID ${id}`,
+      addToTracker: "Add to expiry tracker",
+      hint: "Enter this ID on the scale or at the till.",
+      noId: "ID missing",
       all: "All",
       fruits: "Fruits",
       vegetables: "Vegetables",
@@ -49,16 +79,23 @@ $(document).ready(function () {
         "Could not focus the search field. Please tap directly inside the field.",
     },
     fr: {
-      searchPlaceholder: "Rechercher par nom ou ID produit...",
+      searchPlaceholder: "Rechercher un produit ou un ID…",
+      idLabel: "Identifiant produit",
+      idCopied: (id) => `ID ${id} copié`,
+      copyId: "Copier l'ID",
+      copyIdLabel: (id) => `Copier l'ID ${id}`,
+      addToTracker: "Ajouter au suivi des dates",
+      hint: "Saisissez cet ID sur la balance ou à la caisse.",
+      noId: "ID manquant",
       all: "Tous",
       fruits: "Fruits",
-      vegetables: "Legumes",
+      vegetables: "Légumes",
       sweets: "Sucreries",
       bread: "Pain",
       nuts: "Noix",
       sec: "Sec",
       etc: "Autre",
-      productsFound: "produits trouves",
+      productsFound: "produits trouvés",
       productId: "ID Produit:",
       category: "Categorie:",
       copy: "Copier",
@@ -93,6 +130,13 @@ $(document).ready(function () {
     },
     nl: {
       searchPlaceholder: "Zoek op productnaam of ID...",
+      idLabel: "Product-ID",
+      idCopied: (id) => `ID ${id} gekopieerd`,
+      copyId: "ID kopiëren",
+      copyIdLabel: (id) => `ID ${id} kopiëren`,
+      addToTracker: "Toevoegen aan vervaldatums",
+      hint: "Voer deze ID in op de weegschaal of aan de kassa.",
+      noId: "ID ontbreekt",
       all: "Alle",
       fruits: "Fruit",
       vegetables: "Groenten",
@@ -165,6 +209,7 @@ $(document).ready(function () {
       const response = await fetch("data.json");
       products = await response.json();
       normalizeProductData();
+      updateCategoryCounts();
       updateHeaderMeta();
       displayProducts();
     } catch (error) {
@@ -224,14 +269,20 @@ $(document).ready(function () {
     $("#missingNoteSection").prop("hidden", true);
 
     filtered.forEach((product) => {
+      const t = translations[currentLang];
+      const hasId = product.id && product.id !== "#";
       const card = `
-          <div class="product-card" data-id="${product.id}" role="button" tabindex="0" aria-label="${translations[currentLang].productCardLabel} ${product.displayName}">
-            <img src="products/${product.image}" alt="${product.displayName}" class="product-image" loading="lazy" decoding="async" width="320" height="180">
-                    <div class="product-info">
+          <div class="product-card" data-id="${product.id}" role="button" tabindex="0" aria-label="${product.displayName}, ID ${hasId ? product.id : t.noId}">
+            <img src="products/${product.image}" alt="${product.displayName}" class="product-image" loading="lazy" decoding="async" width="320" height="240">
+            <div class="product-info">
               <div class="product-name">${product.displayName}</div>
-                        <div class="card-id">ID: ${product.id}</div>
-                    </div>
-                </div>
+              <div class="card-id-box">
+                <span class="card-id-label">ID</span>
+                <span class="card-id">${hasId ? product.id : t.noId}</span>
+                <button type="button" class="card-copy-btn" data-copy-id="${product.id}" aria-label="${t.copyIdLabel(product.id)}" ${hasId ? "" : "disabled"}></button>
+              </div>
+            </div>
+          </div>
             `;
       grid.append(card);
     });
@@ -259,6 +310,26 @@ $(document).ready(function () {
     $("#productModal").attr("aria-hidden", "true").fadeOut(200);
     $("body").css("overflow", "auto");
     $("#searchInput").trigger("focus");
+  }
+
+  function copyProductId(id) {
+    if (!id || id === "#") return;
+    const done = () => window.bpToast(translations[currentLang].idCopied(id));
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(id).then(done).catch(() => {
+        window.prompt(translations[currentLang].productId, id);
+      });
+    } else {
+      window.prompt(translations[currentLang].productId, id);
+    }
+  }
+
+  function updateCategoryCounts() {
+    $(".category-btn").each(function () {
+      const cat = $(this).data("category");
+      const n = cat === "all" ? products.length : products.filter((p) => p.category === cat).length;
+      $(this).find(".chip-count").text(n);
+    });
   }
 
   function updateHeaderMeta() {
@@ -368,15 +439,21 @@ $(document).ready(function () {
     });
 
     // Product card open handlers
+    $("#productGrid").on("click", ".card-copy-btn", function (e) {
+      e.stopPropagation();
+      copyProductId(String($(this).attr("data-copy-id")));
+    });
+
     $("#productGrid").on("click", ".product-card", function () {
-      const id = $(this).data("id");
+      // attr() keeps the ID as a string; .data() would turn "80231" into a number and the lookup would fail.
+      const id = String($(this).attr("data-id"));
       showProductModal(id);
     });
 
     $("#productGrid").on("keydown", ".product-card", function (e) {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        const id = $(this).data("id");
+        const id = String($(this).attr("data-id"));
         showProductModal(id);
       }
     });
@@ -390,19 +467,18 @@ $(document).ready(function () {
 
     // Copy ID button
     $("#copyIdBtn").on("click", function () {
+      copyProductId($("#modalId").text());
+    });
+
+    // Open the expiry tracker with this product already filled in.
+    $("#addToTrackerBtn").on("click", function () {
+      const name = $("#modalName").text();
       const id = $("#modalId").text();
-      navigator.clipboard
-        .writeText(id)
-        .then(() => {
-          const originalText = $(this).text();
-          $(this).text(translations[currentLang].copied);
-          setTimeout(() => {
-            $(this).text(originalText);
-          }, 2000);
-        })
-        .catch(() => {
-          window.prompt(translations[currentLang].productId, id);
-        });
+      closeProductModal();
+      document.getElementById("expiryTab").click();
+      $("#expiryProductName").val(name);
+      $("#expiryProductId").val(/^\d+$/.test(id) ? id : "");
+      setTimeout(() => document.getElementById("expiryDate").focus(), 50);
     });
 
     // Keyboard shortcuts
@@ -483,13 +559,10 @@ $(document).ready(function () {
       "placeholder",
       translations[currentLang].searchPlaceholder,
     );
-    $("#copyIdBtn").text(translations[currentLang].copy);
-    $(".modal-info .label:first-child").text(
-      translations[currentLang].productId + " ",
-    );
-    $(".product-category .label").text(
-      translations[currentLang].category + " ",
-    );
+    $("#copyIdBtn").text(translations[currentLang].copyId);
+    $("#addToTrackerBtn").text(translations[currentLang].addToTracker);
+    $("#modalIdLabel").text(translations[currentLang].idLabel);
+    $("#modalHint").text(translations[currentLang].hint);
     $("#missingNoteTitle").text(translations[currentLang].missingTitle);
     $("#missingNoteHelp").text(translations[currentLang].missingHelp);
     $("#missingProductLabel").text(
@@ -504,16 +577,16 @@ $(document).ready(function () {
       .attr("title", translations[currentLang].openKeyboard);
 
     // Update category buttons
-    $('[data-category="all"]').text(translations[currentLang].all);
-    $('[data-category="fruits"]').text(translations[currentLang].fruits);
-    $('[data-category="vegetables"]').text(
+    $('[data-category="all"] .chip-label').text(translations[currentLang].all);
+    $('[data-category="fruits"] .chip-label').text(translations[currentLang].fruits);
+    $('[data-category="vegetables"] .chip-label').text(
       translations[currentLang].vegetables,
     );
-    $('[data-category="sweets"]').text(translations[currentLang].sweets);
-    $('[data-category="bread"]').text(translations[currentLang].bread);
-    $('[data-category="nuts"]').text(translations[currentLang].nuts);
-    $('[data-category="sec"]').text(translations[currentLang].sec);
-    $('[data-category="etc"]').text(translations[currentLang].etc);
+    $('[data-category="sweets"] .chip-label').text(translations[currentLang].sweets);
+    $('[data-category="bread"] .chip-label').text(translations[currentLang].bread);
+    $('[data-category="nuts"] .chip-label').text(translations[currentLang].nuts);
+    $('[data-category="sec"] .chip-label').text(translations[currentLang].sec);
+    $('[data-category="etc"] .chip-label').text(translations[currentLang].etc);
   }
 
   function normalizeProductData() {
@@ -842,6 +915,68 @@ $(document).ready(function () {
         "Vervaldatums zijn lokaal opgeslagen, maar het JSON-serverbestand kon niet worden bijgewerkt.",
     },
   };
+
+  // Redesign wording: one word per idea (collecter / supprimer du suivi), no emoji in labels.
+  Object.assign(labels.fr, {
+    heading: "À collecter aujourd'hui",
+    empty: "Rien à collecter aujourd'hui. Les produits apparaissent ici 10 jours avant leur date d'expiration.",
+    collected: "Collecté", collect: "À collecter", soon: "Expire bientôt", expired: "Expiré", ok: "OK",
+    markCollected: "Marquer collecté", markedCollected: "Collecté",
+    remove: "Supprimer", removeLabel: (name) => `Supprimer ${name} du suivi`,
+    removeTitle: "Supprimer du suivi ?",
+    removePrompt: (name) => `Supprimer « ${name} » du suivi ? L'historique est conservé.`,
+    cancel: "Garder", confirmRemove: "Supprimer",
+    showCollected: "Voir les collectés", hideCollected: "Masquer les collectés",
+    trackedProducts: "Tous les produits suivis", addProduct: "Ajouter au suivi", trackerTitle: "Suivi des dates",
+    rowNumber: "Rangée",
+    tiles: ["À collecter", "Expire bientôt", "OK", "Collectés"],
+    rowShort: "Rangée", expiresOn: (d) => `expire le ${d}`, collectedToast: (n) => `${n} marqué collecté`, undo: "Annuler",
+  });
+  Object.assign(labels.en, {
+    heading: "To collect today",
+    empty: "Nothing to collect today. Products appear here 10 days before they expire.",
+    collected: "Collected", collect: "Collect", soon: "Expiring soon", expired: "Expired", ok: "OK",
+    markCollected: "Mark collected", markedCollected: "Collected", remove: "Delete", confirmRemove: "Delete", cancel: "Keep",
+    removeTitle: "Delete from tracker?", showCollected: "Show collected", hideCollected: "Hide collected",
+    trackedProducts: "All tracked products", addProduct: "Add to tracker", trackerTitle: "Expiry tracker", rowNumber: "Row",
+    tiles: ["To collect", "Expiring soon", "OK", "Collected"],
+    rowShort: "Row", expiresOn: (d) => `expires ${d}`, collectedToast: (n) => `${n} marked collected`, undo: "Undo",
+  });
+  Object.assign(labels.nl, {
+    heading: "Vandaag te verzamelen",
+    empty: "Vandaag niets te verzamelen. Producten verschijnen hier 10 dagen voor de vervaldatum.",
+    collected: "Verzameld", collect: "Verzamelen", soon: "Verloopt binnenkort", expired: "Verlopen", ok: "OK",
+    markCollected: "Markeer verzameld", markedCollected: "Verzameld", remove: "Verwijderen", confirmRemove: "Verwijderen", cancel: "Behouden",
+    showCollected: "Toon verzamelde", hideCollected: "Verberg verzamelde",
+    trackedProducts: "Alle gevolgde producten", addProduct: "Toevoegen", trackerTitle: "Vervaldatums", rowNumber: "Rij",
+    tiles: ["Te verzamelen", "Verloopt binnenkort", "OK", "Verzameld"],
+    rowShort: "Rij", expiresOn: (d) => `vervalt ${d}`, collectedToast: (n) => `${n} gemarkeerd als verzameld`, undo: "Ongedaan maken",
+  });
+
+  function formatShortDate(key) {
+    const [y, m, d] = key.split("-").map(Number);
+    return new Intl.DateTimeFormat(currentLocale(), { day: "numeric", month: "short" }).format(new Date(y, m - 1, d));
+  }
+
+  function renderSummary(today) {
+    const box = document.getElementById("expirySummary");
+    if (!box) return;
+    const active = entries.filter((e) => !e.removed);
+    const open = active.filter((e) => !e.collected);
+    const due = open.filter((e) => today >= e.alertDate).length;
+    const soon = open.filter((e) => today < e.alertDate && daysBetween(today, e.alertDate) < ALERT_LEAD_DAYS).length;
+    const ok = open.length - due - soon;
+    const done = active.length - open.length;
+    const names = translate("tiles");
+    box.replaceChildren();
+    [[due, "collect"], [soon, "soon"], [ok, "ok"], [done, "collected"]].forEach(([n, kind], i) => {
+      const tile = document.createElement("div");
+      tile.className = `summary-tile ${kind}`;
+      appendTextElement(tile, "strong", "", String(n));
+      appendTextElement(tile, "span", "", names[i]);
+      box.append(tile);
+    });
+  }
 
   function currentLanguage() {
     return document.querySelector(".lang-btn.active")?.dataset.lang || "en";
@@ -1200,10 +1335,8 @@ $(document).ready(function () {
       .setAttribute("aria-label", translate("closePanel"));
     collectionEmptyState.textContent = translate("empty");
     collectionEmptyState.hidden = visibleDue.length > 0;
-    if (activeDue.length === 0 && recentlyCollected.size === 0) {
-      collectionPanel.hidden = true;
-      collectionToggle.setAttribute("aria-expanded", "false");
-    }
+    collectionPanel.hidden = false;
+    collectionHeading.dataset.count = String(activeDue.length);
 
     collectionEntries.replaceChildren();
     const headers = translate("fields");
@@ -1214,30 +1347,26 @@ $(document).ready(function () {
       item.className = `collection-item${isDone ? " collected-done" : ""}`;
       item.dataset.entryId = entry.id;
 
+      const shelf = document.createElement("div");
+      shelf.className = "collection-shelf";
+      appendTextElement(shelf, "span", "", translate("rowShort"));
+      appendTextElement(shelf, "strong", "", entry.rowNumber);
+      item.append(shelf);
+
       const details = document.createElement("div");
       details.className = "collection-item-details";
-      const values = [
-        entry.rowNumber,
-        entry.productName,
-        entry.productId,
-        entry.expiryDate,
-        days < 0
-          ? translate("overdue", Math.abs(days))
-          : translate("days", days),
-      ];
-      values.forEach((value, index) => {
-        const field = document.createElement("div");
-        field.className = "collection-item-field";
-        appendTextElement(
-          field,
-          "span",
-          "collection-field-label",
-          headers[index],
-        );
-        appendTextElement(field, "strong", "", value);
-        details.append(field);
-      });
+      appendTextElement(details, "strong", "collection-name", entry.productName);
+      appendTextElement(
+        details,
+        "span",
+        "collection-meta",
+        `ID ${entry.productId} · ${translate("expiresOn", formatShortDate(entry.expiryDate))} · ${
+          days < 0 ? translate("overdue", Math.abs(days)) : translate("days", days)
+        }`,
+      );
       item.append(details);
+      const status = days < 0 ? "expired" : "collect";
+      appendTextElement(item, "span", `expiry-status ${status}`, translate(status));
 
       if (isDone) {
         appendTextElement(
@@ -1358,6 +1487,7 @@ $(document).ready(function () {
       });
 
     renderCollectionList(today);
+    renderSummary(today);
   }
 
   form.addEventListener("submit", (event) => {
@@ -1467,6 +1597,18 @@ $(document).ready(function () {
 
     recentlyCollected.add(entry.id);
     renderEntries();
+    window.bpToast(translate("collectedToast", entry.productName), {
+      label: translate("undo"),
+      onClick: () => {
+        // saveEntries() replaces entries with copies, so look the entry up again by id.
+        const current = entries.find((candidate) => candidate.id === entry.id);
+        if (!current) return;
+        current.collected = false;
+        recentlyCollected.delete(entry.id);
+        saveEntries();
+        renderEntries();
+      },
+    });
     window.setTimeout(() => {
       recentlyCollected.delete(entry.id);
       renderEntries();
