@@ -1235,6 +1235,10 @@
   /* ---------- Search ---------- */
   .search-container { display: flex; align-items: center; gap: 14px; height: 68px; padding: 0 10px 0 22px; margin: 0 0 20px; background: var(--bg-surface); border: 1.5px solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: 0 4px 16px rgba(18, 35, 61, 0.06); position: relative; }
   .search-container::before { content: ""; width: 26px; height: 26px; flex: none; background: var(--blue-700); -webkit-mask: var(--i-search) center / contain no-repeat; mask: var(--i-search) center / contain no-repeat; }
+  /* Search bar hides on scroll down, returns on scroll up (owner request).
+     Leaving: 320ms ease-in, upward. Coming back: 200ms ease-out, a bit faster. */
+  .search-container { position: sticky; top: calc(var(--header-h, 76px) + 8px); z-index: 40; transition: transform 200ms ease-out, opacity 200ms ease-out; will-change: transform; }
+  .search-container.is-hidden { transform: translateY(calc(-100% - var(--header-h, 76px) - 16px)); opacity: 0; pointer-events: none; transition: transform 320ms ease-in, opacity 320ms ease-in; }
   .search-container:focus-within { border-color: var(--blue-600); box-shadow: 0 0 0 3px rgba(0, 108, 180, 0.18); }
   #searchInput { flex: 1; height: 100%; padding: 0; border: 0; outline: 0; background: transparent; box-shadow: none; font-family: var(--font-body); font-size: 18px; font-weight: 500; color: var(--text-primary); }
   #searchInput::placeholder { color: var(--text-muted); opacity: 1; }

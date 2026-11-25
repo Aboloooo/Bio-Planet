@@ -21,6 +21,36 @@ window.bpToast = (function () {
   };
 })();
 
+// Search bar: slide away when scrolling down, come back when scrolling up.
+(function () {
+  let lastY = window.scrollY;
+  let ticking = false;
+  const setHeaderHeight = () => {
+    const header = document.querySelector(".shop-header");
+    if (header) document.documentElement.style.setProperty("--header-h", `${header.offsetHeight}px`);
+  };
+  const update = () => {
+    ticking = false;
+    const bar = document.querySelector(".search-container");
+    const finder = document.getElementById("finderPanel");
+    if (!bar || !finder || finder.hidden) return;
+    const y = window.scrollY;
+    const delta = y - lastY;
+    if (y < 120 || delta < -4) bar.classList.remove("is-hidden"); // near the top, or scrolling up: show
+    else if (delta > 4) bar.classList.add("is-hidden"); // scrolling down: hide
+    lastY = y;
+  };
+  window.addEventListener("scroll", () => {
+    if (!ticking) { ticking = true; window.requestAnimationFrame(update); }
+  }, { passive: true });
+  window.addEventListener("resize", setHeaderHeight);
+  document.addEventListener("DOMContentLoaded", setHeaderHeight);
+  // Typing in the search should always keep it visible.
+  document.addEventListener("focusin", (e) => {
+    if (e.target && e.target.id === "searchInput") document.querySelector(".search-container")?.classList.remove("is-hidden");
+  });
+})();
+
 $(document).ready(function () {
   let products = [];
   let currentLang = "fr";

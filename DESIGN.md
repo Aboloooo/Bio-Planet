@@ -68,7 +68,12 @@ Shadows: **raised** `0 2 8 rgba(18,35,61,.06)` for cards; **overlay** `0 24 60 r
 - **Product Card** — photo 4:3, name (H3, 2 lines max), ID box (blue-50) with large ID and a 40 px copy button.
 - **Text Field** — label above, 56 px input, `border/strong` outline, trailing button: keyboard / keypad / calendar.
 - **Status Badge** — Collect, Soon, Expired, OK; icon + word, radius sm.
-- **App Header** — 76 px: logo + name, app switcher (segmented), language switch, date.
+- **Expiry rules** (set by the store owner): **À collecter** = not collected and < 3 days before expiry (expired included); **Expire bientôt** = not collected and ≤ 10 days; **OK** = more than 10 days. Summary tiles show the rule under the number.
+- **Period filter** — "Du → Au" on the tracked-products list (opens the on-screen calendar), with "Marquer N collectés" for the period (undo in toast) and a ✓ collect button on each row.
+- **App Header** — 76 px, sticky: logo + name, language switch, date.
+- **App Switcher** — full-width bar between header and content (not in the header): two 56 px tabs, active tab solid blue-700 with white text.
+- **Search bar** — sticky under the header; slides up out of view when scrolling down (320 ms ease-in) and comes back when scrolling up (200 ms ease-out, faster). Always visible while typing.
+- **Popups** (product, keyboard, keypad, row picker, calendar, delete) — always fixed in the centre of the screen, whatever the scroll position.
 - **Toast** — dark (`text/primary`) bar, bottom centre, 4 s. Confirmation ("ID 80231 copié") or Undo ("Houmous Bio marqué collecté · Annuler").
 - **Empty State** — icon, title, one sentence: what the list is, why it is empty, what happens next.
 
